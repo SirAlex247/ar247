@@ -26,6 +26,7 @@ MODULOS = [
     "test_modulos",
     "test_api",
     "test_das",
+    "test_e2e_binario",
 ]
 
 
