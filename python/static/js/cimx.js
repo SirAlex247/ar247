@@ -1,5 +1,5 @@
 /* ============================================================
-   ARGeoSt — Lógica principal del frontend
+   CimX — Lógica principal del frontend
    - Navegación entre vistas
    - Recolección de datos del formulario
    - Llamadas al backend (API)
@@ -99,19 +99,19 @@ function showView(name) {
     $('#header-title-small').textContent = meta.s;
   }
   // Al salir de Geometría, liberar el contexto WebGL del visor 3D del muro.
-  if (name !== 'geometry' && window.ARGeoStWall3D) ARGeoStWall3D.dispose();
+  if (name !== 'geometry' && window.CimXWall3D) CimXWall3D.dispose();
   // Visores 3D embebidos en cada vista de diseño: redibujar al entrar, liberar al salir.
-  if (window.ARGeoStPile3D) {
+  if (window.CimXPile3D) {
     if (name === 'piles') { if (typeof window.pilMostrar === 'function') setTimeout(window.pilMostrar, 50); }
-    else ARGeoStPile3D.dispose();
+    else CimXPile3D.dispose();
   }
-  if (window.ARGeoStFooting3D) {
+  if (window.CimXFooting3D) {
     if (name === 'footing') { if (typeof window.zapMostrar === 'function') setTimeout(window.zapMostrar, 50); }
-    else ARGeoStFooting3D.dispose();
+    else CimXFooting3D.dispose();
   }
-  if (window.ARGeoStDado3D) {
+  if (window.CimXDado3D) {
     if (name === 'dado') { if (typeof window.dadMostrar === 'function') setTimeout(window.dadMostrar, 50); }
-    else ARGeoStDado3D.dispose();
+    else CimXDado3D.dispose();
   }
 }
 
@@ -166,10 +166,10 @@ function seleccionarModulo(mod) {
 }
 
 function irADashboard() {
-  if (window.ARGeoStWall3D) ARGeoStWall3D.dispose();
-  if (window.ARGeoStPile3D) ARGeoStPile3D.dispose();
-  if (window.ARGeoStFooting3D) ARGeoStFooting3D.dispose();
-  if (window.ARGeoStDado3D) ARGeoStDado3D.dispose();
+  if (window.CimXWall3D) CimXWall3D.dispose();
+  if (window.CimXPile3D) CimXPile3D.dispose();
+  if (window.CimXFooting3D) CimXFooting3D.dispose();
+  if (window.CimXDado3D) CimXDado3D.dispose();
   document.body.classList.add('en-dashboard');
 }
 
@@ -335,14 +335,14 @@ function _datosMuro() {
 
 function _geomMuro(tipo, data) {
   return (tipo === 'gravedad')
-    ? ARGeoStWallSVG.buildGravedad(data)
-    : ARGeoStWallSVG.buildVoladizo(data);
+    ? CimXWallSVG.buildGravedad(data)
+    : CimXWallSVG.buildVoladizo(data);
 }
 
 function _draw2D(tipo, data, container) {
   if (!container) return;
-  if (tipo === 'gravedad') ARGeoStWallSVG.renderGravedad(data, container);
-  else ARGeoStWallSVG.renderVoladizo(data, container);
+  if (tipo === 'gravedad') CimXWallSVG.renderGravedad(data, container);
+  else CimXWallSVG.renderVoladizo(data, container);
 }
 
 function dibujarMuroSVG() {
@@ -354,16 +354,16 @@ function dibujarMuroSVG() {
   // Pestaña Geometría: 2D o 3D según el toggle
   const f2 = $('#preview-frame-2');
   if (!f2) return;
-  if (vista3D && window.ARGeoStWall3D && ARGeoStWall3D.isAvailable()) {
+  if (vista3D && window.CimXWall3D && CimXWall3D.isAvailable()) {
     try {
-      ARGeoStWall3D.render(_geomMuro(tipo, data), f2, { background: 0x0d1c16 });
+      CimXWall3D.render(_geomMuro(tipo, data), f2, { background: 0x0d1c16 });
     } catch (e) {
-      console.error('[ARGeoSt 3D]', e);
-      ARGeoStWall3D.dispose();
+      console.error('[CimX 3D]', e);
+      CimXWall3D.dispose();
       _draw2D(tipo, data, f2);
     }
   } else {
-    if (window.ARGeoStWall3D) ARGeoStWall3D.dispose();
+    if (window.CimXWall3D) CimXWall3D.dispose();
     _draw2D(tipo, data, f2);
   }
 }
@@ -473,9 +473,9 @@ async function generarPDF() {
       return;
     }
     const blob = await r.blob();
-    const filename = `ARGeoSt-${($('#proyecto').value || 'reporte').replace(/[^a-z0-9]/gi, '_')}.pdf`;
+    const filename = `CimX-${($('#proyecto').value || 'reporte').replace(/[^a-z0-9]/gi, '_')}.pdf`;
     // Abrir el modal de preview en vez de descargar directo
-    ARGeoStPDFModal.open(blob, filename);
+    CimXPDFModal.open(blob, filename);
     toast('Reporte generado — usa el botón "Descargar" en el visor', 'ok');
   } catch (e) {
     toast('Error al generar PDF: ' + e.message, 'err', 6000);

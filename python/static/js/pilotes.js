@@ -1,8 +1,8 @@
 /* ============================================================
-   ARGeoSt — Módulo de Pilotes (diseño estructural)
+   CimX — Módulo de Pilotes (diseño estructural)
    La geotecnia (f_s, q_p, FS) es dato de entrada; el módulo calcula
    diámetro, número de pilotes, longitud y acero longitudinal.
-   Reusa helpers globales de argeost.js: $, $$, toSI, fromSI, toast.
+   Reusa helpers globales de cimx.js: $, $$, toSI, fromSI, toast.
    Entradas en MKS (display) → SI al backend (/api/pilote_diseno).
    ============================================================ */
 'use strict';
@@ -161,16 +161,16 @@ function pilMostrar() {
   const cont = $('#pil-preview');
   if (!cont || !_pilLast) return;
   const d = _pilLast.diseno;
-  if (_vista3D_pil && window.ARGeoStPile3D && ARGeoStPile3D.isAvailable()) {
+  if (_vista3D_pil && window.CimXPile3D && CimXPile3D.isAvailable()) {
     try {
-      ARGeoStPile3D.render({ D: d.D_m, L: d.L_m, N: d.N_pilotes }, cont);
+      CimXPile3D.render({ D: d.D_m, L: d.L_m, N: d.N_pilotes }, cont);
     } catch (e) {
       console.error('[pile3d]', e);
-      if (window.ARGeoStPile3D) ARGeoStPile3D.dispose();
+      if (window.CimXPile3D) CimXPile3D.dispose();
       pilDibujar(_pilLast);
     }
   } else {
-    if (window.ARGeoStPile3D) ARGeoStPile3D.dispose();
+    if (window.CimXPile3D) CimXPile3D.dispose();
     pilDibujar(_pilLast);
   }
 }
@@ -202,8 +202,8 @@ async function pilGenerarPDF(btn) {
     });
     if (!r.ok) { const j = await r.json().catch(() => ({})); toast('Error PDF: ' + (j.error || r.status), 'err', 6000); return; }
     const blob = await r.blob();
-    const filename = `ARGeoSt-pilotes-${(payload.proyecto || 'memoria').replace(/[^a-z0-9]/gi, '_')}.pdf`;
-    if (window.ARGeoStPDFModal) { ARGeoStPDFModal.open(blob, filename); toast('Memoria generada', 'ok'); }
+    const filename = `CimX-pilotes-${(payload.proyecto || 'memoria').replace(/[^a-z0-9]/gi, '_')}.pdf`;
+    if (window.CimXPDFModal) { CimXPDFModal.open(blob, filename); toast('Memoria generada', 'ok'); }
     else { const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = filename; a.click(); URL.revokeObjectURL(url); }
   } catch (e) {
     toast('No se pudo generar la memoria', 'err', 6000);

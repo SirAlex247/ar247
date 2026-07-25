@@ -1,7 +1,7 @@
 /* ============================================================
-   ARGeoSt — Módulo de Zapatas (frontend)
+   CimX — Módulo de Zapatas (frontend)
    Zapata aislada: dimensionamiento geotécnico + diseño estructural.
-   Reusa helpers globales de argeost.js: $, $$, toSI, fromSI, toast.
+   Reusa helpers globales de cimx.js: $, $$, toSI, fromSI, toast.
    Entradas en MKS (display) → SI al backend (/api/zapata).
    ============================================================ */
 'use strict';
@@ -193,20 +193,20 @@ function zapDibujar(res) {
 function zapMostrar() {
   const cont = $('#zap-preview');
   if (!cont || !_zapLast) return;
-  if (_vista3D_zap && window.ARGeoStFooting3D && ARGeoStFooting3D.isAvailable()) {
+  if (_vista3D_zap && window.CimXFooting3D && CimXFooting3D.isAvailable()) {
     const g = _zapLast.geometria;
     try {
-      ARGeoStFooting3D.render({
+      CimXFooting3D.render({
         B: g.B_m, L: g.L_m, h: g.h_m, c1: g.c1_m, c2: g.c2_m,
         Df: (_zapLastPayload && _zapLastPayload.Df) || 1.5,
       }, cont);
     } catch (e) {
       console.error('[footing3d]', e);
-      if (window.ARGeoStFooting3D) ARGeoStFooting3D.dispose();
+      if (window.CimXFooting3D) CimXFooting3D.dispose();
       zapDibujar(_zapLast);
     }
   } else {
-    if (window.ARGeoStFooting3D) ARGeoStFooting3D.dispose();
+    if (window.CimXFooting3D) CimXFooting3D.dispose();
     zapDibujar(_zapLast);
   }
 }
@@ -240,9 +240,9 @@ async function zapGenerarPDF(btn) {
     });
     if (!r.ok) { const j = await r.json().catch(() => ({})); toast('Error PDF: ' + (j.error || r.status), 'err', 6000); return; }
     const blob = await r.blob();
-    const filename = `ARGeoSt-zapata-${(payload.proyecto || 'memoria').replace(/[^a-z0-9]/gi, '_')}.pdf`;
-    if (window.ARGeoStPDFModal) {
-      ARGeoStPDFModal.open(blob, filename);
+    const filename = `CimX-zapata-${(payload.proyecto || 'memoria').replace(/[^a-z0-9]/gi, '_')}.pdf`;
+    if (window.CimXPDFModal) {
+      CimXPDFModal.open(blob, filename);
       toast('Memoria generada — usa "Descargar" en el visor', 'ok');
     } else {
       const url = URL.createObjectURL(blob);

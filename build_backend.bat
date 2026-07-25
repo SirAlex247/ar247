@@ -1,6 +1,6 @@
 @echo off
 REM ============================================================
-REM   ARGeoSt - Build del backend (PyInstaller)
+REM   CimX - Build del backend (PyInstaller)
 REM ============================================================
 REM Este script crea el ejecutable autocontenido del backend
 REM Python que se empaquetará junto con Electron.
@@ -11,7 +11,7 @@ REM   - pip install -r python\requirements.txt
 REM   - pip install pyinstaller
 REM
 REM Salida:
-REM   python-backend\argeost-backend.exe   (lo que Electron usa)
+REM   python-backend\cimx-backend.exe   (lo que Electron usa)
 REM ============================================================
 
 setlocal
@@ -42,7 +42,7 @@ echo.
 echo === Copiando binario al proyecto Electron ===
 cd /d "%ROOT%"
 if exist python-backend rmdir /s /q python-backend
-xcopy /e /i /q python\dist\argeost-backend python-backend >nul
+xcopy /e /i /q python\dist\cimx-backend python-backend >nul
 if errorlevel 1 (
     echo ERROR: no se pudo copiar el binario
     exit /b 1
@@ -52,7 +52,7 @@ echo.
 echo ============================================================
 echo   BUILD COMPLETO
 echo ============================================================
-echo Backend listo en: %ROOT%python-backend\argeost-backend.exe
+echo Backend listo en: %ROOT%python-backend\cimx-backend.exe
 echo.
 echo Proximo paso:
 echo    npm run make    (genera el instalador)

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ============================================================
-#   ARGeoSt — Build del backend (PyInstaller)
+#   CimX — Build del backend (PyInstaller)
 # ============================================================
 # Este script crea el ejecutable autocontenido del backend
 # Python que se empaquetará junto con Electron.
@@ -25,16 +25,16 @@ echo
 echo "=== Copiando binario al proyecto Electron ==="
 cd "$ROOT"
 rm -rf python-backend
-cp -r python/dist/argeost-backend python-backend
+cp -r python/dist/cimx-backend python-backend
 
 echo
 echo "============================================================"
 echo "  BUILD COMPLETO"
 echo "============================================================"
-if [ -f "python-backend/argeost-backend.exe" ]; then
-    echo "Backend listo en: $ROOT/python-backend/argeost-backend.exe"
+if [ -f "python-backend/cimx-backend.exe" ]; then
+    echo "Backend listo en: $ROOT/python-backend/cimx-backend.exe"
 else
-    echo "Backend listo en: $ROOT/python-backend/argeost-backend"
+    echo "Backend listo en: $ROOT/python-backend/cimx-backend"
 fi
 echo
 echo "Próximo paso:"

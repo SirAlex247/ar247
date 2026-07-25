@@ -1,5 +1,5 @@
 /**
- * ARGeoSt — Proceso principal de Electron
+ * CimX — Proceso principal de Electron
  *
  * Responsabilidades:
  *   1. Lanzar el backend Python (Flask) como subprocess al iniciar la app.
@@ -23,7 +23,7 @@ const http = require('http');
 // ─────────────────────────────────────────────────────────────────────
 // Configuración
 // ─────────────────────────────────────────────────────────────────────
-const APP_NAME = 'ARGeoSt';
+const APP_NAME = 'CimX';
 const STARTUP_TIMEOUT_MS = 30_000;     // 30 s para que Python arranque
 const HEALTH_POLL_INTERVAL_MS = 200;   // cada 200 ms
 const HOST = '127.0.0.1';
@@ -47,7 +47,7 @@ function getBackendCommand() {
   // Devuelve {executable, args} para arrancar el backend.
   //
   // En PRODUCCIÓN (app empaquetada) usamos el binario PyInstaller que
-  // está en resources/python-backend/argeost-backend(.exe). Es totalmente
+  // está en resources/python-backend/cimx-backend(.exe). Es totalmente
   // autocontenido — el usuario final NO necesita Python instalado.
   //
   // En DESARROLLO (npm start desde el repo) usamos el python del sistema
@@ -56,7 +56,7 @@ function getBackendCommand() {
   if (!isDev) {
     // Producción: binario empaquetado
     const exeName = process.platform === 'win32'
-      ? 'argeost-backend.exe' : 'argeost-backend';
+      ? 'cimx-backend.exe' : 'cimx-backend';
     const exePath = path.join(
       process.resourcesPath, 'python-backend', exeName
     );
@@ -102,11 +102,11 @@ function startPythonBackend() {
       return reject(err);
     }
 
-    console.log(`[ARGeoSt] Lanzando backend: ${cmd.executable}`);
+    console.log(`[CimX] Lanzando backend: ${cmd.executable}`);
     if (cmd.args.length) {
-      console.log(`[ARGeoSt]   args: ${cmd.args.join(' ')}`);
+      console.log(`[CimX]   args: ${cmd.args.join(' ')}`);
     }
-    console.log(`[ARGeoSt] Archivo de puerto: ${portFile}`);
+    console.log(`[CimX] Archivo de puerto: ${portFile}`);
 
     const fullArgs = [...cmd.args, '--host', HOST, '--port-file', portFile];
     pythonProcess = spawn(cmd.executable, fullArgs, {
@@ -122,11 +122,11 @@ function startPythonBackend() {
       process.stderr.write(`[backend:err] ${data}`);
     });
     pythonProcess.on('error', (err) => {
-      console.error('[ARGeoSt] Error al lanzar backend:', err);
+      console.error('[CimX] Error al lanzar backend:', err);
       reject(err);
     });
     pythonProcess.on('exit', (code, signal) => {
-      console.log(`[ARGeoSt] Backend terminó (code=${code}, signal=${signal})`);
+      console.log(`[CimX] Backend terminó (code=${code}, signal=${signal})`);
       pythonProcess = null;
     });
 
@@ -157,7 +157,7 @@ function startPythonBackend() {
 
       clearInterval(check);
       backendPort = port;
-      console.log(`[ARGeoSt] Backend listo en http://${HOST}:${port}`);
+      console.log(`[CimX] Backend listo en http://${HOST}:${port}`);
       resolve(port);
     }, HEALTH_POLL_INTERVAL_MS);
   });
@@ -209,7 +209,7 @@ function createWindow() {
 
   // Cargar la URL del backend local
   const url = `http://${HOST}:${backendPort}/`;
-  console.log(`[ARGeoSt] Cargando UI: ${url}`);
+  console.log(`[CimX] Cargando UI: ${url}`);
   mainWindow.loadURL(url);
 
   mainWindow.once('ready-to-show', () => mainWindow.show());
@@ -221,7 +221,7 @@ function createWindow() {
   });
 
   // En desarrollo abre DevTools al inicio si la env var está activa
-  if (isDev && process.env.ARGEOST_DEVTOOLS === '1') {
+  if (isDev && process.env.CIMX_DEVTOOLS === '1') {
     mainWindow.webContents.openDevTools({ mode: 'detach' });
   }
 }
@@ -289,12 +289,12 @@ function buildAppMenu() {
       label: 'Ayuda',
       submenu: [
         {
-          label: 'Acerca de ARGeoSt',
+          label: 'Acerca de CimX',
           click: () => {
             dialog.showMessageBox(mainWindow, {
               type: 'info',
-              title: 'Acerca de ARGeoSt',
-              message: 'ARGeoSt v1.0.0',
+              title: 'Acerca de CimX',
+              message: 'CimX v1.0.0',
               detail:
                 'Diseño de muros de contención conforme a la NSR-10 (Colombia).\n'
                 + '\n'
@@ -317,7 +317,7 @@ function buildAppMenu() {
 // IPC: el renderer pregunta cuál es la URL del backend
 // ─────────────────────────────────────────────────────────────────────
 const { ipcMain } = require('electron');
-ipcMain.handle('argeost:get-backend-url', () => {
+ipcMain.handle('cimx:get-backend-url', () => {
   return backendPort ? `http://${HOST}:${backendPort}` : null;
 });
 
@@ -330,7 +330,7 @@ app.whenReady().then(async () => {
     createWindow();
   } catch (err) {
     dialog.showErrorBox(
-      'Error iniciando ARGeoSt',
+      'Error iniciando CimX',
       `No se pudo iniciar el backend de cálculo:\n\n${err.message}`
     );
     app.quit();
@@ -351,7 +351,7 @@ app.on('window-all-closed', () => {
 app.on('before-quit', () => {
   // Apagar el backend Python ordenadamente
   if (pythonProcess) {
-    console.log('[ARGeoSt] Cerrando backend Python...');
+    console.log('[CimX] Cerrando backend Python...');
     try {
       // En Windows kill() manda SIGTERM; el proceso debería cerrar limpio.
       pythonProcess.kill();

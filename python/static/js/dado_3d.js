@@ -1,12 +1,12 @@
 /* ============================================================
-   ARGeoSt — Visor 3D del dado / cabezal de pilotes (Three.js + OrbitControls)
+   CimX — Visor 3D del dado / cabezal de pilotes (Three.js + OrbitControls)
    Cabezal (rectangular o prisma triangular) + pilotes + arranque de columna,
    malla de refuerzo, sombras suaves, etiquetas de cota y flechas de reacción.
    Instancia única (un contexto WebGL).
    ============================================================ */
 'use strict';
 
-window.ARGeoStDado3D = (function () {
+window.CimXDado3D = (function () {
 
   const COL = {
     concrete: 0x9aa3ab, col: 0xb4bdc4, pile: 0x6477a0,

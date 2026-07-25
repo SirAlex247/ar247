@@ -1,12 +1,12 @@
 /* ============================================================
-   ARGeoSt — Renderizador SVG del muro (rediseñado)
+   CimX — Renderizador SVG del muro (rediseñado)
    Estilo: tema oscuro alineado con la interfaz. Cotas en verde
    neón sobre fondo verde-oscuro, texturas con SVG patterns,
    sombras sutiles para dar volumen.
    ============================================================ */
 'use strict';
 
-window.ARGeoStWallSVG = (function () {
+window.CimXWallSVG = (function () {
 
   // ID único de la instancia actual (se reasigna en cada render para evitar
   // colisiones cuando hay múltiples SVGs en la misma página).

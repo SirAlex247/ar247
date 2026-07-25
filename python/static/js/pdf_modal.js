@@ -1,12 +1,12 @@
 /* ============================================================
-   ARGeoSt — Modal de previsualización del PDF
+   CimX — Modal de previsualización del PDF
    Crea un modal full-screen con el PDF embebido y botones para
    descargar / cerrar. Funciona con un Blob URL para que el PDF
    se sirva sin disco temporal.
    ============================================================ */
 'use strict';
 
-window.ARGeoStPDFModal = (function () {
+window.CimXPDFModal = (function () {
 
   let modalEl = null;
   let currentBlobUrl = null;
@@ -72,7 +72,7 @@ window.ARGeoStPDFModal = (function () {
     dlBtn.onclick = () => {
       const a = document.createElement('a');
       a.href = currentBlobUrl;
-      a.download = filename || 'ARGeoSt-reporte.pdf';
+      a.download = filename || 'CimX-reporte.pdf';
       document.body.appendChild(a);
       a.click();
       a.remove();

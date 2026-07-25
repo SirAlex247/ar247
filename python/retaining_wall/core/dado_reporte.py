@@ -338,7 +338,7 @@ def generar_memoria_dado(datos, resultado, entradas) -> bytes:
 
     el.append(Spacer(1, 12))
     el.append(HRFlowable(width="100%", thickness=0.5, color=GRIS_CLARO))
-    el.append(Paragraph("Generado por ARGeoSt · Dado / cabezal de pilotes · NSR-10 / ACI 318", small))
+    el.append(Paragraph("Generado por CimX · Dado / cabezal de pilotes · NSR-10 / ACI 318", small))
 
     doc.build(el)
     return buf.getvalue()

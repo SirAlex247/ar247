@@ -1,4 +1,4 @@
-# Pruebas de ARGeoSt
+# Pruebas de CimX
 
 Suite que valida el **motor de cálculo que la app ejecuta realmente** (empujes,
 estabilidad, pipeline de muros voladizo/gravedad, y los módulos pilote/zapata/

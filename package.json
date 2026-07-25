@@ -1,8 +1,8 @@
 {
-  "name": "argeost",
-  "productName": "ARGeoSt",
+  "name": "cimx",
+  "productName": "CimX",
   "version": "1.0.0",
-  "description": "ARGeoSt — Diseño de muros de contención NSR-10 (Colombia)",
+  "description": "CimX — Diseño de muros de contención NSR-10 (Colombia)",
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
@@ -11,8 +11,8 @@
   },
   "keywords": ["geotecnia", "muros", "NSR-10", "contención"],
   "author": {
-    "name": "ARGeoSt",
-    "email": "soporte@argeost.local"
+    "name": "CimX",
+    "email": "soporte@cimx.local"
   },
   "license": "Proprietary",
   "devDependencies": {
@@ -24,8 +24,8 @@
   "config": {
     "forge": {
       "packagerConfig": {
-        "name": "ARGeoSt",
-        "executableName": "ARGeoSt",
+        "name": "CimX",
+        "executableName": "CimX",
         "icon": "src/assets/icon",
         "asar": true,
         "extraResource": [
@@ -44,9 +44,9 @@
         {
           "name": "@electron-forge/maker-squirrel",
           "config": {
-            "name": "ARGeoSt",
-            "setupExe": "ARGeoSt-Setup.exe",
-            "iconUrl": "https://raw.githubusercontent.com/example/argeost/main/icon.ico",
+            "name": "CimX",
+            "setupExe": "CimX-Setup.exe",
+            "iconUrl": "https://raw.githubusercontent.com/example/cimx/main/icon.ico",
             "setupIcon": "src/assets/icon.ico"
           }
         },

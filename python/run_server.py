@@ -1,4 +1,4 @@
-"""Punto de entrada del backend Flask para empaquetado en ARGeoSt (Electron).
+"""Punto de entrada del backend Flask para empaquetado en CimX (Electron).
 
 Diferencias respecto a ``app.py``:
 - Acepta el puerto por argumento ``--port``. Si se omite, busca un puerto
@@ -34,7 +34,7 @@ def _puerto_libre() -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Backend Flask de ARGeoSt — diseño de muros NSR-10",
+        description="Backend Flask de CimX — diseño de muros NSR-10",
     )
     parser.add_argument(
         "--host", default="127.0.0.1",
@@ -56,15 +56,15 @@ def main() -> int:
         try:
             Path(args.port_file).write_text(str(puerto), encoding="utf-8")
         except Exception as e:
-            print(f"[ARGeoSt] No se pudo escribir el archivo de puerto: {e}",
+            print(f"[CimX] No se pudo escribir el archivo de puerto: {e}",
                   file=sys.stderr)
             return 2
 
     # El log a stdout es importante: Electron lo captura y puede usar
     # marcadores para saber cuándo el server está listo.
-    print(f"[ARGeoSt] Backend iniciado en http://{args.host}:{puerto}",
+    print(f"[CimX] Backend iniciado en http://{args.host}:{puerto}",
           flush=True)
-    print(f"[ARGeoSt] READY puerto={puerto}", flush=True)
+    print(f"[CimX] READY puerto={puerto}", flush=True)
 
     # Werkzeug muestra mucho ruido por defecto; en producción Electron
     # no lo quiere. Lo silenciamos pero conservamos los errores.
@@ -75,7 +75,7 @@ def main() -> int:
         app.run(host=args.host, port=puerto, debug=False,
                 use_reloader=False, threaded=True)
     except KeyboardInterrupt:
-        print("[ARGeoSt] Detenido por el usuario", flush=True)
+        print("[CimX] Detenido por el usuario", flush=True)
     return 0
 
 

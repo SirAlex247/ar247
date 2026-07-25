@@ -1,12 +1,12 @@
 /* ============================================================
-   ARGeoSt — Visor 3D de la zapata (Three.js + OrbitControls)
+   CimX — Visor 3D de la zapata (Three.js + OrbitControls)
    Losa + arranque de columna embebidos en el suelo, con malla de
    refuerzo, sombras suaves, etiquetas de cota y flechas de presión q_u.
    Instancia única (un contexto WebGL).
    ============================================================ */
 'use strict';
 
-window.ARGeoStFooting3D = (function () {
+window.CimXFooting3D = (function () {
 
   const COL = {
     concrete: 0x9aa3ab, concrete2: 0x7f8890, col: 0xb4bdc4,

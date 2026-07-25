@@ -1,8 +1,8 @@
 /**
- * ARGeoSt — Guardar / Abrir proyecto
+ * CimX — Guardar / Abrir proyecto
  *
  * Serializa TODOS los campos del formulario (inputs/select/textarea con id) a
- * un archivo `.argeost.json` y los restaura al abrirlo. Es genérico: funciona
+ * un archivo `.cimx.json` y los restaura al abrirlo. Es genérico: funciona
  * en todos los módulos (muro, pilote, zapata, dado) porque la UI identifica
  * cada campo por su `id`. No requiere backend.
  */
@@ -22,7 +22,7 @@
       }
     });
     return {
-      __argeost_proyecto: VERSION,
+      __cimx_proyecto: VERSION,
       fecha: new Date().toISOString(),
       modulo: document.body.dataset.modulo || '',
       tipo_muro: (document.getElementById('tipo_muro') || {}).value || null,
@@ -33,8 +33,8 @@
   /** Restaura los valores al DOM y dispara eventos para que la UI reaccione.
    *  Devuelve cuántos campos se aplicaron. */
   function restaurar(data) {
-    if (!data || !data.__argeost_proyecto || !data.campos) {
-      throw new Error('El archivo no es un proyecto de ARGeoSt válido.');
+    if (!data || !data.__cimx_proyecto || !data.campos) {
+      throw new Error('El archivo no es un proyecto de CimX válido.');
     }
     let aplicados = 0;
     Object.entries(data.campos).forEach(([id, val]) => {
@@ -53,7 +53,7 @@
     return aplicados;
   }
 
-  /** Descarga el proyecto actual como archivo .argeost.json. */
+  /** Descarga el proyecto actual como archivo .cimx.json. */
   function guardar() {
     const data = serializar();
     const nombre = (document.getElementById('proyecto') || {}).value || 'proyecto';
@@ -62,7 +62,7 @@
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = slug + '.argeost.json';
+    a.download = slug + '.cimx.json';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -115,5 +115,5 @@
   }
 
   // Expuesto para pruebas y uso programático.
-  window.ARGeoStProyecto = { serializar, restaurar, guardar, abrirDesdeArchivo };
+  window.CimXProyecto = { serializar, restaurar, guardar, abrirDesdeArchivo };
 })();

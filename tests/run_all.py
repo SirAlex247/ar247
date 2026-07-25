@@ -1,4 +1,4 @@
-"""Runner autónomo de la suite de pruebas ARGeoSt — NO requiere pytest.
+"""Runner autónomo de la suite de pruebas CimX — NO requiere pytest.
 
     python tests/run_all.py
 

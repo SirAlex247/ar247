@@ -278,7 +278,7 @@ def generar_memoria_pilote(datos, pilote, perfil, resultado) -> bytes:
 
     el.append(Spacer(1, 14))
     el.append(HRFlowable(width="100%", thickness=0.5, color=GRIS_CLARO))
-    el.append(Paragraph("Generado por ARGeoSt · Metodología: Rodríguez Serquén / Das · NSR-10",
+    el.append(Paragraph("Generado por CimX · Metodología: Rodríguez Serquén / Das · NSR-10",
                         small))
 
     doc.build(el)

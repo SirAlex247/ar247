@@ -1,9 +1,9 @@
 /**
- * ARGeoSt — Preload script
+ * CimX — Preload script
  *
  * Este script corre en el proceso renderer ANTES de cargar tu HTML, pero
  * con acceso a Node.js. Sirve de puente seguro: expone al renderer una
- * API mínima en `window.argeost` sin darle acceso completo a Node.
+ * API mínima en `window.cimx` sin darle acceso completo a Node.
  *
  * El renderer NO puede importar electron ni fs ni path. Solo puede llamar
  * los métodos que se exponen aquí explícitamente.
@@ -12,13 +12,13 @@
 
 const { contextBridge, ipcRenderer } = require('electron');
 
-contextBridge.exposeInMainWorld('argeost', {
+contextBridge.exposeInMainWorld('cimx', {
   /**
    * Devuelve la URL base del backend Python (ej. "http://127.0.0.1:50192").
    * Si el backend aún no está listo, devuelve null.
    */
   getBackendUrl: async () => {
-    return await ipcRenderer.invoke('argeost:get-backend-url');
+    return await ipcRenderer.invoke('cimx:get-backend-url');
   },
 
   /**

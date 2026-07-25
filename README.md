@@ -1,4 +1,4 @@
-# ARGeoSt — Diseño de muros de contención (NSR-10)
+# CimX — Diseño de muros de contención (NSR-10)
 
 App de escritorio (Electron + Python/Flask) para diseño y verificación
 de muros de contención conforme a la NSR-10 colombiana.
@@ -9,7 +9,7 @@ Validada contra los ejemplos 8.1 y 8.2 de Braja M. Das,
 ## Estructura
 
 ```
-ARGeoSt/
+CimX/
 ├── package.json         ← configuración Electron
 ├── src/
 │   ├── main.js          ← proceso principal (Electron)
@@ -58,8 +58,8 @@ sin tener que reiniciar Electron.
 ### Desarrollo con DevTools de Electron
 
 ```bash
-ARGEOST_DEVTOOLS=1 npm start          # macOS/Linux
-set ARGEOST_DEVTOOLS=1 && npm start   # Windows
+CIMX_DEVTOOLS=1 npm start          # macOS/Linux
+set CIMX_DEVTOOLS=1 && npm start   # Windows
 ```
 
 ## Cómo empaquetar (instalador `.exe`)
@@ -85,7 +85,7 @@ build_backend.bat
 El script:
 1. Verifica que `pyinstaller` esté instalado (lo instala si falta).
 2. Empaqueta `python/run_server.py` con todas sus dependencias en un
-   ejecutable autocontenido (`argeost-backend.exe` en Windows).
+   ejecutable autocontenido (`cimx-backend.exe` en Windows).
 3. Copia el resultado a `python-backend/` en la raíz del proyecto.
 
 Tarda 1-3 minutos. El resultado es ~135 MB (incluye Python + matplotlib +
@@ -100,7 +100,7 @@ npm run package    # genera carpeta out/ con la app empaquetada
 npm run make       # genera el instalador final
 ```
 
-En **Windows** produce `out/make/squirrel.windows/x64/ARGeoSt-Setup.exe`.
+En **Windows** produce `out/make/squirrel.windows/x64/CimX-Setup.exe`.
 En **macOS/Linux** produce un `.zip`.
 
 El instalador es un solo archivo que tu usuario descarga y ejecuta.
@@ -121,7 +121,7 @@ pytest                      # si tienes pytest instalado
 Reproducidos automáticamente en `tests/test_das.py` con la geometría exacta de
 las figuras 8.12 y 8.13 del libro:
 
-| Caso | Magnitud | Das | ARGeoSt | Δ |
+| Caso | Magnitud | Das | CimX | Δ |
 |---|---|---|---|---|
 | Ej. 8.1 (voladizo) | FS_volcamiento | 2.95 | 2.98 | +1.0% |
 | | FS_deslizamiento | 2.70 | 2.73 | +1.0% |
@@ -140,5 +140,5 @@ las figuras 8.12 y 8.13 del libro:
 ejecutable PyInstaller autocontenido → Flask → cálculos NSR-10 → matplotlib →
 reportlab PDF, **sin Python del sistema**. Se salta si el binario no está
 construido. Build validado end-to-end en Windows: backend 80.5 MB, la app
-empaquetada (`ARGeoSt.exe`) arranca el backend y sirve `/api/health`, y el
-instalador `ARGeoSt-Setup.exe` (~287 MB) se genera con `npm run make`.
+empaquetada (`CimX.exe`) arranca el backend y sirve `/api/health`, y el
+instalador `CimX-Setup.exe` (~287 MB) se genera con `npm run make`.

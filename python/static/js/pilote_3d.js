@@ -1,12 +1,12 @@
 /* ============================================================
-   ARGeoSt — Visor 3D del pilote (Three.js + OrbitControls)
+   CimX — Visor 3D del pilote (Three.js + OrbitControls)
    Pilote (cilindro + punta) embebido en suelo estratificado translúcido,
    con nivel freático, etiquetas de cota y de cada estrato, sombras suaves.
    Instancia única (un solo contexto WebGL).
    ============================================================ */
 'use strict';
 
-window.ARGeoStPile3D = (function () {
+window.CimXPile3D = (function () {
 
   const COL = {
     concrete: 0x9aa3ab, arena: 0xceae72, arcilla: 0x9b8260,

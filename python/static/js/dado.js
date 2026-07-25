@@ -1,8 +1,8 @@
 /* ============================================================
-   ARGeoSt — Módulo de Dados / Cabezales de pilotes (frontend)
+   CimX — Módulo de Dados / Cabezales de pilotes (frontend)
    Encepado sobre 1 a 6 pilotes: reacciones, punzonamiento, cortante,
    flexión y método de bielas (NSR-10).
-   Reusa helpers globales de argeost.js: $, $$, toSI, fromSI, toast.
+   Reusa helpers globales de cimx.js: $, $$, toSI, fromSI, toast.
    Entradas en MKS (display) → SI al backend (/api/dado).
    ============================================================ */
 'use strict';
@@ -231,16 +231,16 @@ function _dadPayload3D(g) {
 function dadMostrar() {
   const cont = $('#dado-preview');
   if (!cont || !_dadLast) return;
-  if (_vista3D_dado && window.ARGeoStDado3D && ARGeoStDado3D.isAvailable()) {
+  if (_vista3D_dado && window.CimXDado3D && CimXDado3D.isAvailable()) {
     try {
-      ARGeoStDado3D.render(_dadPayload3D(_dadLast.geometria), cont, { onSelect: dadOnSelect });
+      CimXDado3D.render(_dadPayload3D(_dadLast.geometria), cont, { onSelect: dadOnSelect });
     } catch (e) {
       console.error('[dado3d]', e);
-      if (window.ARGeoStDado3D) ARGeoStDado3D.dispose();
+      if (window.CimXDado3D) CimXDado3D.dispose();
       dadDibujar(_dadLast);
     }
   } else {
-    if (window.ARGeoStDado3D) ARGeoStDado3D.dispose();
+    if (window.CimXDado3D) CimXDado3D.dispose();
     dadHideProps();
     dadDibujar(_dadLast);
   }
@@ -298,7 +298,7 @@ function _dadEnsurePanel() {
     '<div id="dp-body" style="padding:12px"></div>' +
     '<div style="padding:8px 12px;border-top:1px solid rgba(120,160,140,0.20);font-size:10.5px;color:#9fc0b2">Edita un valor y el modelo se recalcula.</div>';
   card.appendChild(panel);
-  $('#dp-close').addEventListener('click', () => { ARGeoStDado3D.clearSelection(); dadHideProps(); });
+  $('#dp-close').addEventListener('click', () => { CimXDado3D.clearSelection(); dadHideProps(); });
   return panel;
 }
 
@@ -356,7 +356,7 @@ async function dadAplicarEdicion() {
     _dadLast = data;
     dadRender(data);                                   // KPIs y detalle
     const cont = $('#dado-preview');                   // re-render 3D en el mismo panel (mantiene cámara y selección)
-    if (cont) ARGeoStDado3D.render(_dadPayload3D(data.geometria), cont, { onSelect: dadOnSelect });
+    if (cont) CimXDado3D.render(_dadPayload3D(data.geometria), cont, { onSelect: dadOnSelect });
     dadRefreshProps(data.geometria);                   // refresca valores derivados (sin pisar el campo activo)
   } catch (e) {
     toast('No se pudo recalcular', 'err');
@@ -387,9 +387,9 @@ async function dadGenerarPDF(btn) {
     });
     if (!r.ok) { const j = await r.json().catch(() => ({})); toast('Error PDF: ' + (j.error || r.status), 'err', 6000); return; }
     const blob = await r.blob();
-    const filename = `ARGeoSt-dado-${(payload.proyecto || 'memoria').replace(/[^a-z0-9]/gi, '_')}.pdf`;
-    if (window.ARGeoStPDFModal) {
-      ARGeoStPDFModal.open(blob, filename);
+    const filename = `CimX-dado-${(payload.proyecto || 'memoria').replace(/[^a-z0-9]/gi, '_')}.pdf`;
+    if (window.CimXPDFModal) {
+      CimXPDFModal.open(blob, filename);
       toast('Memoria generada — usa "Descargar" en el visor', 'ok');
     } else {
       const url = URL.createObjectURL(blob);

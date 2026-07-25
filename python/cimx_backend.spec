@@ -1,15 +1,15 @@
 # -*- mode: python ; coding: utf-8 -*-
-"""PyInstaller spec — ARGeoSt backend.
+"""PyInstaller spec — CimX backend.
 
 Este archivo describe a PyInstaller cómo empaquetar el backend Flask
 (``run_server.py``) en un único ejecutable autocontenido para distribución
 con Electron.
 
 Ejecución típica desde la carpeta python/:
-    pyinstaller --clean --noconfirm argeost_backend.spec
+    pyinstaller --clean --noconfirm cimx_backend.spec
 
-Salida: dist/argeost-backend/argeost-backend(.exe)
-        dist/argeost-backend/_internal/...   (Python + libs + datos)
+Salida: dist/cimx-backend/cimx-backend(.exe)
+        dist/cimx-backend/_internal/...   (Python + libs + datos)
 """
 from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 
@@ -80,7 +80,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='argeost-backend',
+    name='cimx-backend',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -100,5 +100,5 @@ coll = COLLECT(
     strip=False,
     upx=False,
     upx_exclude=[],
-    name='argeost-backend',
+    name='cimx-backend',
 )

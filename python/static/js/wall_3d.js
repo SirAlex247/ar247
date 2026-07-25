@@ -1,12 +1,12 @@
 /* ============================================================
-   ARGeoSt — Visor 3D del muro (Three.js + OrbitControls)
+   CimX — Visor 3D del muro (Three.js + OrbitControls)
    Extruye el perfil 2D del muro (mismo modelo que wall_svg.js)
    a un sólido 3D orbitable. Funciona para voladizo y gravedad.
    Una sola instancia activa (un único contexto WebGL).
    ============================================================ */
 'use strict';
 
-window.ARGeoStWall3D = (function () {
+window.CimXWall3D = (function () {
 
   // Paleta alineada con el SVG (wall_svg.js)
   const COL = {

@@ -3,11 +3,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>ARGeoSt — Diseño geotécnico y estructural · NSR-10</title>
+  <title>CimX — Diseño geotécnico y estructural · NSR-10</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/argeost.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/cimx.css') }}">
 </head>
 <body class="en-dashboard">
 
@@ -17,7 +17,7 @@
     <div class="dash-brand">
       <div class="brand-logo">AR</div>
       <div>
-        <div class="dash-title">ARGeoSt</div>
+        <div class="dash-title">CimX</div>
         <div class="dash-sub">Software de diseño geotécnico y estructural · NSR-10</div>
       </div>
     </div>
@@ -55,7 +55,7 @@
       </button>
     </div>
 
-    <div class="dash-foot">ARGeoSt v1.0 · NSR-10 · Colombia</div>
+    <div class="dash-foot">CimX v1.0 · NSR-10 · Colombia</div>
   </div>
 </div>
 
@@ -66,7 +66,7 @@
     <div class="brand">
       <div class="brand-logo">AR</div>
       <div>
-        <div class="brand-name">ARGeoSt</div>
+        <div class="brand-name">CimX</div>
         <div class="brand-tagline">Diseño Geotécnico</div>
       </div>
     </div>
@@ -146,7 +146,7 @@
     </nav>
 
     <div class="nav-footer">
-      <div>ARGeoSt <span class="version">v1.0.0</span></div>
+      <div>CimX <span class="version">v1.0.0</span></div>
       <div style="opacity:0.6">NSR-10 · Colombia</div>
     </div>
   </aside>
@@ -176,11 +176,11 @@
 
     <div class="header-actions">
       <!-- Proyecto (todos los módulos) -->
-      <button class="btn btn-secondary" id="btn-abrir-proy" title="Abrir proyecto (.argeost.json)">
+      <button class="btn btn-secondary" id="btn-abrir-proy" title="Abrir proyecto (.cimx.json)">
         <svg class="icon" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
         <span>Abrir</span>
       </button>
-      <button class="btn btn-secondary" id="btn-guardar-proy" title="Guardar proyecto (.argeost.json)">
+      <button class="btn btn-secondary" id="btn-guardar-proy" title="Guardar proyecto (.cimx.json)">
         <svg class="icon" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
         <span>Guardar</span>
       </button>
@@ -816,7 +816,7 @@
               <label class="field-label">Longitud máxima L <span class="unit">m</span></label>
               <input type="number" id="pil_Lmax" data-mag="length" class="input" value="25" step="1">
             </div>
-            <div class="hint mt-3">Deja D y N° de pilotes vacíos para que ARGeoSt los dimensione. La longitud L siempre se calcula.</div>
+            <div class="hint mt-3">Deja D y N° de pilotes vacíos para que CimX los dimensione. La longitud L siempre se calcula.</div>
           </div>
         </div>
 
@@ -962,7 +962,7 @@
               <label class="field-label">Espesor h <span class="unit">m</span></label>
               <input type="number" id="zap_h" data-mag="length" class="input" placeholder="auto" step="0.05">
             </div>
-            <div class="hint mt-3">Deja B, L y h vacíos para que ARGeoSt dimensione automáticamente.</div>
+            <div class="hint mt-3">Deja B, L y h vacíos para que CimX dimensione automáticamente.</div>
           </div>
         </div>
 
@@ -1115,7 +1115,7 @@
                 </select>
               </div>
             </div>
-            <div class="hint mt-3">Deja s, e y h vacíos para que ARGeoSt dimensione automáticamente. El método de bielas conviene en encepados rígidos (regiones D).</div>
+            <div class="hint mt-3">Deja s, e y h vacíos para que CimX dimensione automáticamente. El método de bielas conviene en encepados rígidos (regiones D).</div>
           </div>
         </div>
 
@@ -1186,7 +1186,7 @@
 <script src="{{ url_for('static', filename='js/zapata_3d.js') }}"></script>
 <script src="{{ url_for('static', filename='js/dado_3d.js') }}"></script>
 <script src="{{ url_for('static', filename='js/pdf_modal.js') }}"></script>
-<script src="{{ url_for('static', filename='js/argeost.js') }}"></script>
+<script src="{{ url_for('static', filename='js/cimx.js') }}"></script>
 <script src="{{ url_for('static', filename='js/pilotes.js') }}"></script>
 <script src="{{ url_for('static', filename='js/zapatas.js') }}"></script>
 <script src="{{ url_for('static', filename='js/dado.js') }}"></script>

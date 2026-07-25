@@ -20,7 +20,7 @@ _client = _appmod.app.test_client()
 
 def test_health_responde_ok():
     r = _client.get("/api/health").get_json()
-    assert r["ok"] is True and r["service"] == "ARGeoSt backend"
+    assert r["ok"] is True and r["service"] == "CimX backend"
 
 
 def test_analizar_ok_devuelve_resultado_completo():

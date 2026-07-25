@@ -56,12 +56,12 @@ app = Flask(__name__, template_folder="templates", static_folder="static")
 # =============================================================================
 # Logging y manejo de errores centralizado
 # =============================================================================
-# En modo debug (env ``ARGEOST_DEBUG=1``) las respuestas de error incluyen el
+# En modo debug (env ``CIMX_DEBUG=1``) las respuestas de error incluyen el
 # traceback completo para depurar. En producción NO se filtra el traceback al
 # cliente; se registra en el archivo de log y se devuelve un mensaje limpio.
-ARGEOST_DEBUG = os.environ.get("ARGEOST_DEBUG", "") not in ("", "0", "false", "False")
+CIMX_DEBUG = os.environ.get("CIMX_DEBUG", "") not in ("", "0", "false", "False")
 
-logger = logging.getLogger("argeost")
+logger = logging.getLogger("cimx")
 logger.setLevel(logging.INFO)
 
 
@@ -69,10 +69,10 @@ def _setup_file_logging() -> None:
     """Configura un archivo de log rotativo. Nunca rompe la app si falla
     (p.ej. carpeta no escribible en el empaquetado)."""
     try:
-        log_dir = os.environ.get("ARGEOST_LOG_DIR") or os.path.join(os.getcwd(), "logs")
+        log_dir = os.environ.get("CIMX_LOG_DIR") or os.path.join(os.getcwd(), "logs")
         os.makedirs(log_dir, exist_ok=True)
         handler = RotatingFileHandler(
-            os.path.join(log_dir, "argeost.log"),
+            os.path.join(log_dir, "cimx.log"),
             maxBytes=1_000_000, backupCount=3, encoding="utf-8",
         )
         handler.setFormatter(logging.Formatter(
@@ -116,7 +116,7 @@ def _error_response(e: Exception, contexto: str = ""):
         payload = {"ok": False, "validacion": False,
                    "error": ("Ocurrió un error al procesar la solicitud. "
                              "Revisa los datos e inténtalo de nuevo.")}
-    if ARGEOST_DEBUG:
+    if CIMX_DEBUG:
         payload["trace"] = traceback.format_exc()
     return jsonify(payload)
 
@@ -1089,12 +1089,12 @@ def index():
 
 @app.route("/api/health")
 def api_health():
-    """Endpoint de health-check usado por el shell de ARGeoSt (Electron)
+    """Endpoint de health-check usado por el shell de CimX (Electron)
     para hacer poll y saber cuándo cargar la UI con seguridad. Siempre
     responde rápido y no toca disco; es seguro pegarle muchas veces."""
     return jsonify({
         "ok": True,
-        "service": "ARGeoSt backend",
+        "service": "CimX backend",
         "version": "1.0.0",
     })
 

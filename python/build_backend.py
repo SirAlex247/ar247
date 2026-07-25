@@ -1,7 +1,7 @@
-"""Script de build del backend ARGeoSt.
+"""Script de build del backend CimX.
 
-Ejecuta PyInstaller con el spec ``argeost_backend.spec`` y deja el
-resultado en ``dist/argeost-backend/`` listo para ser empaquetado por
+Ejecuta PyInstaller con el spec ``cimx_backend.spec`` y deja el
+resultado en ``dist/cimx-backend/`` listo para ser empaquetado por
 Electron Forge en el siguiente paso.
 
 Uso:
@@ -9,8 +9,8 @@ Uso:
     python build_backend.py
 
 Esto produce:
-    dist/argeost-backend/
-    ├── argeost-backend(.exe)        ← ejecutable
+    dist/cimx-backend/
+    ├── cimx-backend(.exe)        ← ejecutable
     └── _internal/                   ← Python + libs + datos
         ├── ...
         └── matplotlib/...
@@ -19,9 +19,9 @@ El binario es completamente autocontenido — el usuario final NO necesita
 tener Python instalado.
 
 Notas importantes:
-- En Windows produce ``argeost-backend.exe``.
-- En Linux produce ``argeost-backend`` (sin extensión).
-- En macOS produce ``argeost-backend`` (sin extensión).
+- En Windows produce ``cimx-backend.exe``.
+- En Linux produce ``cimx-backend`` (sin extensión).
+- En macOS produce ``cimx-backend`` (sin extensión).
 - PyInstaller solo puede generar binarios para el OS donde se ejecuta.
   Para distribuir en Windows hay que correr este script en Windows.
 """
@@ -35,7 +35,7 @@ from pathlib import Path
 
 def main() -> int:
     here = Path(__file__).parent.resolve()
-    spec = here / "argeost_backend.spec"
+    spec = here / "cimx_backend.spec"
     if not spec.exists():
         print(f"ERROR: no se encuentra {spec}", file=sys.stderr)
         return 1
@@ -59,13 +59,13 @@ def main() -> int:
         print(f"ERROR: PyInstaller falló con código {rc}", file=sys.stderr)
         return rc
 
-    out_dir = here / "dist" / "argeost-backend"
+    out_dir = here / "dist" / "cimx-backend"
     if not out_dir.exists():
         print(f"ERROR: no se generó {out_dir}", file=sys.stderr)
         return 1
 
     # Mostrar resumen
-    exe_name = "argeost-backend.exe" if sys.platform == "win32" else "argeost-backend"
+    exe_name = "cimx-backend.exe" if sys.platform == "win32" else "cimx-backend"
     exe_path = out_dir / exe_name
     if not exe_path.exists():
         print(f"ERROR: no se encuentra el ejecutable {exe_path}",
@@ -84,7 +84,7 @@ def main() -> int:
     print("Para probar manualmente:")
     print(f'  "{exe_path}" --port 5050')
     print()
-    print("Próximo paso: copiar dist/argeost-backend al proyecto Electron.")
+    print("Próximo paso: copiar dist/cimx-backend al proyecto Electron.")
     return 0
 
 

@@ -1,4 +1,4 @@
-"""Configuración compartida para la suite de pruebas de ARGeoSt.
+"""Configuración compartida para la suite de pruebas de CimX.
 
 - Añade ``python/`` al ``sys.path`` para poder importar ``app`` y el paquete
   ``retaining_wall`` sin instalar nada.

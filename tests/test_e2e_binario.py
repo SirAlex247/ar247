@@ -3,8 +3,8 @@ Electron: ejecutable autocontenido → Flask → cálculos NSR-10 → matplotlib
 reportlab PDF, SIN Python del sistema.
 
 Se **salta** automáticamente si el binario no está construido (``python-backend/
-argeost-backend[.exe]``). Para construirlo:  ``python python/build_backend.py``
-y copiar ``python/dist/argeost-backend`` a ``python-backend/`` (o correr
+cimx-backend[.exe]``). Para construirlo:  ``python python/build_backend.py``
+y copiar ``python/dist/cimx-backend`` a ``python-backend/`` (o correr
 ``build_backend.bat`` en Windows).
 
 Correr:  python tests/run_all.py   (o  pytest tests/test_e2e_binario.py)
@@ -32,7 +32,7 @@ except ModuleNotFoundError:
 
 
 def _ruta_binario():
-    exe = "argeost-backend.exe" if sys.platform == "win32" else "argeost-backend"
+    exe = "cimx-backend.exe" if sys.platform == "win32" else "cimx-backend"
     return os.path.join(_RAIZ, "python-backend", exe)
 
 
