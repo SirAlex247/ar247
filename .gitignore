@@ -22,6 +22,10 @@ dist/
 python/build/
 python/dist/
 
+# ── Certificados de firma de código: NUNCA versionar ─────────────
+*.pfx
+*.p12
+
 # ── Bibliografía: PDFs grandes con derechos de autor, NO versionar ─
 libros/
 

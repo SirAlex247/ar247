@@ -20,41 +20,5 @@
     "@electron-forge/cli": "^7.4.0",
     "@electron-forge/maker-squirrel": "^7.4.0",
     "@electron-forge/maker-zip": "^7.4.0"
-  },
-  "config": {
-    "forge": {
-      "packagerConfig": {
-        "name": "CimX",
-        "executableName": "CimX",
-        "icon": "src/assets/icon",
-        "asar": true,
-        "extraResource": [
-          "python-backend"
-        ],
-        "ignore": [
-          "^/python($|/)",
-          "^/build_backend\\.bat$",
-          "^/test_lifecycle\\.js$",
-          "/__pycache__/",
-          "\\.pyc$"
-        ]
-      },
-      "rebuildConfig": {},
-      "makers": [
-        {
-          "name": "@electron-forge/maker-squirrel",
-          "config": {
-            "name": "CimX",
-            "setupExe": "CimX-Setup.exe",
-            "iconUrl": "https://raw.githubusercontent.com/example/cimx/main/icon.ico",
-            "setupIcon": "src/assets/icon.ico"
-          }
-        },
-        {
-          "name": "@electron-forge/maker-zip",
-          "platforms": ["darwin", "linux"]
-        }
-      ]
-    }
   }
 }
