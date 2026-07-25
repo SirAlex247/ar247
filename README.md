@@ -132,5 +132,13 @@ las figuras 8.12 y 8.13 del libro:
 | | q_puntera | 188.4 kPa | 188.3 kPa | ~0% |
 
 > El +1% del Ej. 8.1 proviene de que Das toma Ka = 0.3532 de tabla, mientras el
-> programa usa la fórmula cerrada de Rankine (Ka = 0.3495). El test E2E de la
-> cadena Electron→PyInstaller→Flask→PDF aún no está implementado.
+> programa usa la fórmula cerrada de Rankine (Ka = 0.3495).
+
+### Prueba E2E del binario empaquetado
+
+`tests/test_e2e_binario.py` valida la cadena que distribuye Electron —
+ejecutable PyInstaller autocontenido → Flask → cálculos NSR-10 → matplotlib →
+reportlab PDF, **sin Python del sistema**. Se salta si el binario no está
+construido. Build validado end-to-end en Windows: backend 80.5 MB, la app
+empaquetada (`ARGeoSt.exe`) arranca el backend y sirve `/api/health`, y el
+instalador `ARGeoSt-Setup.exe` (~287 MB) se genera con `npm run make`.
