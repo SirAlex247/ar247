@@ -1,0 +1,1184 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>ARGeoSt — Diseño geotécnico y estructural · NSR-10</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/argeost.css') }}">
+</head>
+<body class="en-dashboard">
+
+<!-- ═════════════  DASHBOARD (selección de módulo)  ═════════════ -->
+<div class="dashboard" id="dashboard">
+  <div class="dash-inner">
+    <div class="dash-brand">
+      <div class="brand-logo">AR</div>
+      <div>
+        <div class="dash-title">ARGeoSt</div>
+        <div class="dash-sub">Software de diseño geotécnico y estructural · NSR-10</div>
+      </div>
+    </div>
+
+    <h1 class="dash-h1">¿Qué vas a diseñar?</h1>
+    <p class="dash-lead">Selecciona el tipo de elemento. Toda la interfaz, los datos y los resultados se adaptan a lo que elijas.</p>
+
+    <div class="dash-grid">
+      <button class="module-card" data-modulo-sel="muro">
+        <div class="mc-icon"><svg viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M5 21V8l7-5 7 5v13"/><path d="M9 21V12h6v9"/></svg></div>
+        <div class="mc-title">Muros de contención</div>
+        <div class="mc-desc">Voladizo y gravedad · estabilidad, empujes, sismo NSR-10, diseño estructural y vista 3D.</div>
+        <div class="mc-badge ok">Disponible</div>
+      </button>
+
+      <button class="module-card" data-modulo-sel="pilote">
+        <div class="mc-icon"><svg viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M6 6v15"/><path d="M12 6v15"/><path d="M18 6v15"/><path d="M5 21h14"/></svg></div>
+        <div class="mc-title">Pilotes</div>
+        <div class="mc-desc">Concreto vaciado in situ · capacidad axial (punta + fuste, multiestrato) y diseño estructural.</div>
+        <div class="mc-badge ok">Disponible</div>
+      </button>
+
+      <button class="module-card" data-modulo-sel="zapata">
+        <div class="mc-icon"><svg viewBox="0 0 24 24"><path d="M9 3v6"/><path d="M15 3v6"/><path d="M5 9h14v3a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2z"/><path d="M3 21h18"/><path d="M8 14v7"/><path d="M16 14v7"/></svg></div>
+        <div class="mc-title">Zapatas</div>
+        <div class="mc-desc">Zapata aislada · dimensionamiento geotécnico y diseño estructural (punzonamiento, cortante y flexión).</div>
+        <div class="mc-badge ok">Disponible</div>
+      </button>
+
+      <button class="module-card" data-modulo-sel="dado">
+        <div class="mc-icon"><svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="6" rx="1"/><path d="M7 12v9"/><path d="M12 12v9"/><path d="M17 12v9"/><path d="M10 3h4v3h-4z"/></svg></div>
+        <div class="mc-title">Dados / Cabezales</div>
+        <div class="mc-desc">Encepado sobre 1 a 6 pilotes · reacciones, punzonamiento, cortante, flexión y método de bielas.</div>
+        <div class="mc-badge ok">Disponible</div>
+      </button>
+    </div>
+
+    <div class="dash-foot">ARGeoSt v1.0 · NSR-10 · Colombia</div>
+  </div>
+</div>
+
+<div class="app">
+
+  <!-- ─────────────  SIDEBAR  ───────────── -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-logo">AR</div>
+      <div>
+        <div class="brand-name">ARGeoSt</div>
+        <div class="brand-tagline">Diseño Geotécnico</div>
+      </div>
+    </div>
+
+    <nav class="nav">
+      <button class="nav-item nav-home" id="nav-inicio" type="button">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        <span class="label">Inicio · Módulos</span>
+      </button>
+
+      <!-- ───── Módulo: MURO ───── -->
+      <div class="nav-section" data-module="muro">Diseño del muro</div>
+      <button class="nav-item" data-view="summary" data-module="muro">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M3 12l2-2 4 4 8-8 4 4"/><path d="M3 21h18"/></svg>
+        <span class="label">Resumen</span>
+      </button>
+      <button class="nav-item" data-view="geometry" data-module="muro">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M5 21V8l7-5 7 5v13"/><path d="M9 21V12h6v9"/></svg>
+        <span class="label">Geometría</span>
+      </button>
+      <button class="nav-item" data-view="soils" data-module="muro">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M2 22h20"/><path d="M2 16c4-2 8-2 12 0s8 2 8 0"/><path d="M2 12c4-2 8-2 12 0s8 2 8 0"/><path d="M2 8c4-2 8-2 12 0s8 2 8 0"/></svg>
+        <span class="label">Suelos</span>
+      </button>
+      <button class="nav-item" data-view="loads" data-module="muro">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M12 2v8"/><path d="M8 6l4-4 4 4"/><path d="M3 14h18"/><path d="M5 18h14"/><path d="M7 22h10"/></svg>
+        <span class="label">Cargas y Sismo</span>
+      </button>
+      <button class="nav-item" data-view="materials" data-module="muro">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+        <span class="label">Materiales</span>
+      </button>
+      <div class="nav-section" data-module="muro">Análisis</div>
+      <button class="nav-item" data-view="results" data-module="muro">
+        <svg class="icon" viewBox="0 0 24 24"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        <span class="label">Resultados</span>
+      </button>
+
+      <!-- ───── Módulo: PILOTE ───── -->
+      <div class="nav-section" data-module="pilote">Diseño del pilote</div>
+      <button class="nav-item" data-view="piles" data-module="pilote">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M6 6v15"/><path d="M12 6v15"/><path d="M18 6v15"/><path d="M5 21h14"/></svg>
+        <span class="label">Diseño de Pilotes</span>
+      </button>
+      <button class="nav-item" data-view="pilereport" data-module="pilote">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>
+        <span class="label">Memoria de cálculo</span>
+      </button>
+
+      <!-- ───── Módulo: ZAPATA ───── -->
+      <div class="nav-section" data-module="zapata">Diseño de la zapata</div>
+      <button class="nav-item" data-view="footing" data-module="zapata">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M9 3v6"/><path d="M15 3v6"/><path d="M4 9h16v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M3 21h18"/><path d="M8 14v7"/><path d="M16 14v7"/></svg>
+        <span class="label">Diseño de Zapata</span>
+      </button>
+      <button class="nav-item" data-view="footingreport" data-module="zapata">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>
+        <span class="label">Memoria de cálculo</span>
+      </button>
+
+      <div class="nav-section" data-module="dado">Diseño del dado</div>
+      <button class="nav-item" data-view="dado" data-module="dado">
+        <svg class="icon" viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="6" rx="1"/><path d="M7 12v9"/><path d="M12 12v9"/><path d="M17 12v9"/><path d="M10 3h4v3h-4z"/></svg>
+        <span class="label">Diseño del Dado</span>
+      </button>
+      <button class="nav-item" data-view="dadoreport" data-module="dado">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>
+        <span class="label">Memoria de cálculo</span>
+      </button>
+
+      <!-- ───── Compartido ───── -->
+      <div class="nav-section" data-module="muro pilote zapata dado">Proyecto</div>
+      <button class="nav-item" data-view="project" data-module="muro pilote zapata dado">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <span class="label">Datos del Proyecto</span>
+      </button>
+    </nav>
+
+    <div class="nav-footer">
+      <div>ARGeoSt <span class="version">v1.0.0</span></div>
+      <div style="opacity:0.6">NSR-10 · Colombia</div>
+    </div>
+  </aside>
+
+  <!-- ─────────────  HEADER  ───────────── -->
+  <header class="header">
+    <div class="header-title">
+      <span id="header-title-main">Resumen del Proyecto</span>
+      <small id="header-title-small">Vista general y verificaciones</small>
+    </div>
+
+    <div class="proj-selector" title="Proyecto activo" data-module="muro">
+      <svg class="icon" viewBox="0 0 24 24"><path d="M3 7h18M3 12h18M3 17h18"/></svg>
+      <div>
+        <div class="label">Proyecto actual</div>
+        <div class="name" id="proj-display">Muro voladizo · Ej. 8.1 Das</div>
+      </div>
+    </div>
+
+    <div class="status-pill idle" id="estado-pill" data-module="muro">
+      <svg class="icon" viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+      <div>
+        <div class="label">Estado del diseño</div>
+        <div class="value">PENDIENTE</div>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <!-- Muro -->
+      <button class="btn btn-secondary" id="btn-preview" data-module="muro" title="Actualizar vista previa">
+        <svg class="icon" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        <span>Actualizar</span>
+      </button>
+      <button class="btn btn-primary" id="btn-analyze" data-module="muro">
+        <svg class="icon" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        <span>Ejecutar análisis</span>
+      </button>
+      <button class="btn btn-secondary" id="btn-pdf" data-module="muro">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        <span>Generar PDF</span>
+      </button>
+      <!-- Pilote -->
+      <button class="btn btn-primary" id="btn-pile-calc-h" data-module="pilote">
+        <svg class="icon" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        <span>Calcular</span>
+      </button>
+      <button class="btn btn-secondary" id="btn-pile-pdf-h" data-module="pilote">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        <span>Generar PDF</span>
+      </button>
+      <!-- Zapata -->
+      <button class="btn btn-primary" id="btn-zap-calc-h" data-module="zapata">
+        <svg class="icon" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        <span>Calcular</span>
+      </button>
+      <button class="btn btn-secondary" id="btn-zap-pdf-h" data-module="zapata">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        <span>Generar PDF</span>
+      </button>
+      <!-- Dado -->
+      <button class="btn btn-primary" id="btn-dado-calc-h" data-module="dado">
+        <svg class="icon" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        <span>Calcular</span>
+      </button>
+      <button class="btn btn-secondary" id="btn-dado-pdf-h" data-module="dado">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        <span>Generar PDF</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ─────────────  MAIN  ───────────── -->
+  <main class="main">
+
+    <!-- ===== VISTA: RESUMEN ===== -->
+    <section class="view active" data-view="summary">
+      <div class="view-header">
+        <div>
+          <div class="view-title">Resumen del Proyecto</div>
+          <div class="view-subtitle">Vista global del diseño · KPIs de estabilidad</div>
+        </div>
+      </div>
+
+      <div class="kpi-grid">
+        <div class="kpi" id="kpi-sv">
+          <div class="kpi-label">ΣV — Carga vertical</div>
+          <div class="kpi-value">—</div>
+          <div class="kpi-unit">tonf/m</div>
+        </div>
+        <div class="kpi" id="kpi-sh">
+          <div class="kpi-label">ΣH — Empuje neto</div>
+          <div class="kpi-value">—</div>
+          <div class="kpi-unit">tonf/m</div>
+        </div>
+        <div class="kpi" id="kpi-smr">
+          <div class="kpi-label">ΣM_R — Estabilizador</div>
+          <div class="kpi-value">—</div>
+          <div class="kpi-unit">tonf·m/m</div>
+        </div>
+        <div class="kpi" id="kpi-smo">
+          <div class="kpi-label">ΣM_o — Volcador</div>
+          <div class="kpi-value">—</div>
+          <div class="kpi-unit">tonf·m/m</div>
+        </div>
+        <div class="kpi" id="kpi-fs">
+          <div class="kpi-label">FS Volcamiento</div>
+          <div class="kpi-value">—</div>
+          <div class="kpi-unit"></div>
+        </div>
+      </div>
+
+      <div class="summary-grid">
+        <div class="card">
+          <div class="card-header">
+            <svg class="card-icon" viewBox="0 0 24 24"><path d="M3 21h18M5 21V8l7-5 7 5v13"/></svg>
+            <div class="card-title">Vista del muro</div>
+          </div>
+          <div class="preview-frame" id="preview-frame">
+            <!-- Aquí se inserta el SVG dinámico (ver wall_svg.js) -->
+          </div>
+          <div class="hint mt-3">
+            <b>Tip:</b> al cambiar geometría o cargas, presiona "Actualizar" para refrescar la vista.
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <svg class="card-icon" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            <div class="card-title">Verificaciones de estabilidad</div>
+          </div>
+          <div class="kpi-grid" id="ver-cards" style="grid-template-columns: 1fr 1fr">
+            <div class="kpi"><div class="kpi-label">Volcamiento</div><div class="kpi-value">—</div><div class="kpi-foot muted">Sin análisis</div></div>
+            <div class="kpi"><div class="kpi-label">Deslizamiento</div><div class="kpi-value">—</div><div class="kpi-foot muted">Sin análisis</div></div>
+            <div class="kpi"><div class="kpi-label">Capacidad</div><div class="kpi-value">—</div><div class="kpi-foot muted">Sin análisis</div></div>
+            <div class="kpi"><div class="kpi-label">Excentricidad</div><div class="kpi-value">—</div><div class="kpi-foot muted">Sin análisis</div></div>
+          </div>
+          <div class="hint mt-3">
+            <b>Estabilidad externa:</b> según NSR-10, los FS mínimos son 2.0 (volcamiento), 1.5 (deslizamiento) y 3.0 (capacidad portante).
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <svg class="card-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <div class="card-title">Resumen rápido</div>
+          </div>
+          <table>
+            <tbody id="summary-table">
+              <tr><td class="muted">Tipo de muro</td><td class="text-right" id="sum-tipo">Voladizo</td></tr>
+              <tr><td class="muted">Método de empuje</td><td class="text-right" id="sum-metodo">Rankine</td></tr>
+              <tr><td class="muted">Altura total</td><td class="text-right text-mono" id="sum-h">—</td></tr>
+              <tr><td class="muted">Ancho zapata</td><td class="text-right text-mono" id="sum-b">—</td></tr>
+              <tr><td class="muted">Profundidad D</td><td class="text-right text-mono" id="sum-d">—</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== VISTA: GEOMETRÍA ===== -->
+    <section class="view" data-view="geometry">
+      <div class="view-header">
+        <div>
+          <div class="view-title">Geometría del Muro</div>
+          <div class="view-subtitle">Tipo, dimensiones y profundidad de desplante</div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+        <div>
+          <div class="card mb-3">
+            <div class="card-header">
+              <div class="card-title">Tipo de muro</div>
+            </div>
+            <div class="field">
+              <label class="field-label">Tipo</label>
+              <select id="tipo_muro" class="input">
+                <option value="voladizo" selected>Voladizo (cantilever)</option>
+                <option value="gravedad">Gravedad (trapezoidal)</option>
+              </select>
+            </div>
+            <div class="field">
+              <label class="field-label">Método de empuje activo</label>
+              <select id="metodo_empuje" class="input">
+                <option value="rankine">Rankine</option>
+                <option value="coulomb">Coulomb</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="card" id="geom-voladizo">
+            <div class="card-header">
+              <div class="card-title">Dimensiones · Voladizo</div>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label class="field-label">H vástago <span class="unit">m</span></label>
+                <input type="number" id="H_vastago" data-mag="length" class="input" value="6.00" step="0.05">
+              </div>
+              <div class="field">
+                <label class="field-label">Espesor zapata <span class="unit">m</span></label>
+                <input type="number" id="e_zapata" data-mag="length" class="input" value="0.70" step="0.05">
+              </div>
+            </div>
+            <div class="field">
+              <label class="field-label">H relleno retenido <span class="unit">m</span></label>
+              <input type="number" id="H_relleno" data-mag="length" class="input" value="" step="0.05" placeholder="(vacío = igual a H vástago)">
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label class="field-label">Puntera <span class="unit">m</span></label>
+                <input type="number" id="b_puntera" data-mag="length" class="input" value="0.70" step="0.05">
+              </div>
+              <div class="field">
+                <label class="field-label">Talón <span class="unit">m</span></label>
+                <input type="number" id="b_talon" data-mag="length" class="input" value="2.60" step="0.05">
+              </div>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label class="field-label">Corona vástago <span class="unit">m</span></label>
+                <input type="number" id="b_corona" data-mag="length" class="input" value="0.50" step="0.05">
+              </div>
+              <div class="field">
+                <label class="field-label">Acartelamiento frontal <span class="unit">m</span></label>
+                <input type="number" id="a_frontal_v" data-mag="length" class="input" value="0.20" step="0.05">
+              </div>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label class="field-label">Acartelamiento posterior <span class="unit">m</span></label>
+                <input type="number" id="a_posterior_v" data-mag="length" class="input" value="0.00" step="0.05">
+              </div>
+              <div class="field">
+                <label class="field-label">Base vástago (= corona + acartelamientos) <span class="unit">m</span></label>
+                <input type="number" id="b_base_vast" class="input" value="0.70" step="0.05" readonly tabindex="-1" style="opacity:.65">
+              </div>
+            </div>
+            <div class="field">
+              <label class="field-label">Profundidad de desplante D <span class="unit">m</span></label>
+              <input type="number" id="D" data-mag="length" class="input" value="1.50" step="0.05">
+            </div>
+          </div>
+
+          <div class="card" id="geom-gravedad" style="display:none">
+            <div class="card-header">
+              <div class="card-title">Dimensiones · Gravedad</div>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label class="field-label">H muro (cuerpo) <span class="unit">m</span></label>
+                <input type="number" id="H_muro" data-mag="length" class="input" value="5.70" step="0.05">
+              </div>
+              <div class="field">
+                <label class="field-label">Espesor zapata <span class="unit">m</span></label>
+                <input type="number" id="e_zapata_g" data-mag="length" class="input" value="0.80" step="0.05">
+              </div>
+            </div>
+            <div class="field-row-3">
+              <div class="field">
+                <label class="field-label">Corona <span class="unit">m</span></label>
+                <input type="number" id="b_corona_g" data-mag="length" class="input" value="0.60" step="0.05">
+              </div>
+              <div class="field">
+                <label class="field-label">Acart. frontal <span class="unit">m</span></label>
+                <input type="number" id="a_frontal" data-mag="length" class="input" value="0.27" step="0.05">
+              </div>
+              <div class="field">
+                <label class="field-label">Acart. posterior <span class="unit">m</span></label>
+                <input type="number" id="a_posterior" data-mag="length" class="input" value="1.53" step="0.05">
+              </div>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label class="field-label">Puntera <span class="unit">m</span></label>
+                <input type="number" id="b_puntera_g" data-mag="length" class="input" value="0.80" step="0.05">
+              </div>
+              <div class="field">
+                <label class="field-label">Talón <span class="unit">m</span></label>
+                <input type="number" id="b_talon_g" data-mag="length" class="input" value="0.30" step="0.05">
+              </div>
+            </div>
+            <div class="field">
+              <label class="field-label">Profundidad de desplante D <span class="unit">m</span></label>
+              <input type="number" id="D_g" data-mag="length" class="input" value="1.50" step="0.05">
+            </div>
+            <div class="hint mt-2">
+              <b>Nota:</b> los muros de gravedad resisten por su propio peso. El método recomendado es Coulomb sobre la cara posterior real.
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="card">
+            <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+              <div class="card-title">Vista del muro</div>
+              <div class="vista-toggle" role="group" aria-label="Modo de vista">
+                <button type="button" class="vista-btn active" data-vista-btn="2d">2D</button>
+                <button type="button" class="vista-btn" data-vista-btn="3d">3D</button>
+              </div>
+            </div>
+            <div class="preview-frame" id="preview-frame-2" style="min-height: 540px">
+              <!-- Vista 2D (SVG, wall_svg.js) o 3D (Three.js, wall_3d.js) -->
+            </div>
+            <div class="hint mt-3" id="vista3d-hint" style="display:none">
+              <b>3D:</b> arrastra para orbitar · rueda para acercar/alejar · clic derecho para desplazar · doble clic para reencuadrar.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== VISTA: SUELOS ===== -->
+    <section class="view" data-view="soils">
+      <div class="view-header">
+        <div>
+          <div class="view-title">Suelos</div>
+          <div class="view-subtitle">Propiedades del relleno y del suelo de cimentación</div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Suelo de relleno (detrás del muro)</div>
+          </div>
+          <div class="field">
+            <label class="field-label">Nombre</label>
+            <input type="text" id="relleno_nombre" class="input" value="Relleno granular">
+          </div>
+          <div class="field-row-3">
+            <div class="field">
+              <label class="field-label">γ <span class="unit">tonf/m³</span></label>
+              <input type="number" id="relleno_gamma" data-mag="gamma" class="input" value="1.83" step="0.01">
+            </div>
+            <div class="field">
+              <label class="field-label">φ <span class="unit">°</span></label>
+              <input type="number" id="relleno_phi" class="input" value="30" step="1">
+            </div>
+            <div class="field">
+              <label class="field-label">c' <span class="unit">tonf/m²</span></label>
+              <input type="number" id="relleno_cohesion" data-mag="pressure" class="input" value="0" step="0.1">
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Suelo de cimentación (debajo del muro)</div>
+          </div>
+          <div class="field">
+            <label class="field-label">Nombre</label>
+            <input type="text" id="ciment_nombre" class="input" value="Suelo cohesivo">
+          </div>
+          <div class="field-row-3">
+            <div class="field">
+              <label class="field-label">γ <span class="unit">tonf/m³</span></label>
+              <input type="number" id="ciment_gamma" data-mag="gamma" class="input" value="1.94" step="0.01">
+            </div>
+            <div class="field">
+              <label class="field-label">φ <span class="unit">°</span></label>
+              <input type="number" id="ciment_phi" class="input" value="20" step="1">
+            </div>
+            <div class="field">
+              <label class="field-label">c' <span class="unit">tonf/m²</span></label>
+              <input type="number" id="ciment_cohesion" data-mag="pressure" class="input" value="4.08" step="0.1">
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== VISTA: CARGAS Y SISMO ===== -->
+    <section class="view" data-view="loads">
+      <div class="view-header">
+        <div>
+          <div class="view-title">Cargas y Sismo</div>
+          <div class="view-subtitle">Sobrecarga superficial, inclinación del relleno, sismo NSR-10</div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Cargas estáticas</div>
+          </div>
+          <div class="field">
+            <label class="field-label">Inclinación α del relleno <span class="unit">°</span></label>
+            <input type="number" id="alpha" class="input" value="10" step="1">
+          </div>
+          <div class="field">
+            <label class="field-label">Sobrecarga q <span class="unit">tonf/m²</span></label>
+            <input type="number" id="sobrecarga" data-mag="pressure" class="input" value="0" step="0.1">
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Sismo (NSR-10)</div>
+          </div>
+          <div class="field">
+            <label class="field-label" style="display:flex;align-items:center;gap:8px">
+              <input type="checkbox" id="incluir_sismo" style="width:auto"> Incluir efectos sísmicos
+            </label>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label class="field-label">Aa</label>
+              <input type="number" id="Aa" class="input" value="0.15" step="0.01">
+            </div>
+            <div class="field">
+              <label class="field-label">Av</label>
+              <input type="number" id="Av" class="input" value="0.15" step="0.01">
+            </div>
+          </div>
+          <div class="field">
+            <label class="field-label">Tipo de suelo NSR-10</label>
+            <select id="tipo_suelo_nsr" class="input">
+              <option value="A">A — Roca dura</option>
+              <option value="B">B — Roca</option>
+              <option value="C">C — Suelo muy denso o roca blanda</option>
+              <option value="D" selected>D — Suelo rígido</option>
+              <option value="E">E — Suelo blando</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== VISTA: MATERIALES ===== -->
+    <section class="view" data-view="materials">
+      <div class="view-header">
+        <div>
+          <div class="view-title">Materiales</div>
+          <div class="view-subtitle">Concreto y acero de refuerzo</div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Concreto</div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label class="field-label">f'c <span class="unit">kgf/cm²</span></label>
+              <input type="number" id="concreto_fc" class="input" value="210" step="10">
+            </div>
+            <div class="field">
+              <label class="field-label">γ concreto <span class="unit">tonf/m³</span></label>
+              <input type="number" id="concreto_gamma" data-mag="gamma" class="input" value="2.45" step="0.01">
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Acero de refuerzo</div>
+          </div>
+          <div class="field">
+            <label class="field-label">fy <span class="unit">kgf/cm²</span></label>
+            <input type="number" id="acero_fy" class="input" value="4200" step="100">
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== VISTA: RESULTADOS ===== -->
+    <section class="view" data-view="results">
+      <div class="view-header">
+        <div>
+          <div class="view-title">Resultados del Análisis</div>
+          <div class="view-subtitle">Cargas, combinaciones y diseño estructural</div>
+        </div>
+      </div>
+
+      <div class="tabs">
+        <button class="tab active" data-tab="cargas">Cargas</button>
+        <button class="tab" data-tab="combinaciones">Combinaciones</button>
+        <button class="tab" data-tab="diseno">Diseño estructural</button>
+      </div>
+
+      <div class="tab-panel active" data-panel="cargas">
+        <div class="table-wrap">
+          <table id="tbl-cargas">
+            <thead>
+              <tr><th>#</th><th>Carga</th><th>Tipo</th><th>Categoría</th><th class="text-right">F (tonf/m)</th></tr>
+            </thead>
+            <tbody><tr><td colspan="5" class="muted" style="text-align:center;padding:24px">Ejecuta el análisis para ver las cargas</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="tab-panel" data-panel="combinaciones">
+        <div id="tbl-combinaciones-wrap">
+          <div class="muted" style="text-align:center;padding:24px">Ejecuta el análisis para ver las combinaciones</div>
+        </div>
+      </div>
+
+      <div class="tab-panel" data-panel="diseno">
+        <div class="table-wrap">
+          <table id="tbl-diseno">
+            <thead>
+              <tr><th>Elemento</th><th class="text-right">Mu (tonf·m/m)</th><th class="text-right">As req (mm²/m)</th>
+                  <th class="text-right">Vu (tonf/m)</th><th class="text-right">φVc (tonf/m)</th><th>Estado</th></tr>
+            </thead>
+            <tbody><tr><td colspan="6" class="muted" style="text-align:center;padding:24px">Ejecuta el análisis para ver el diseño</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== VISTA: PROYECTO ===== -->
+    <section class="view" data-view="project">
+      <div class="view-header">
+        <div>
+          <div class="view-title">Datos del Proyecto</div>
+          <div class="view-subtitle">Información que aparecerá en la portada del PDF</div>
+        </div>
+      </div>
+
+      <div class="card" style="max-width:800px">
+        <div class="card-header">
+          <div class="card-title">Información general</div>
+        </div>
+        <div class="field">
+          <label class="field-label">Nombre del proyecto</label>
+          <input type="text" id="proyecto" class="input" placeholder="Muro de Contención – Proyecto XYZ">
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label class="field-label">Empresa</label>
+            <input type="text" id="empresa" class="input" placeholder="Ej. Ingeniería SAS">
+          </div>
+          <div class="field">
+            <label class="field-label">Contratante</label>
+            <input type="text" id="contratante" class="input" placeholder="—">
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label class="field-label">Ubicación</label>
+            <input type="text" id="ubicacion" class="input" placeholder="Ciudad, Departamento">
+          </div>
+          <div class="field">
+            <label class="field-label">Ingeniero responsable</label>
+            <input type="text" id="ingeniero" class="input" placeholder="Nombre del diseñador">
+          </div>
+        </div>
+        <div class="field">
+          <label class="field-label">Observaciones</label>
+          <textarea id="observaciones" class="input" rows="4" placeholder="Notas para el reporte (opcional)"></textarea>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== VISTA: PILOTES ===== -->
+    <section class="view" data-view="piles">
+      <div class="view-header">
+        <div>
+          <div class="view-title">Diseño de Pilotes</div>
+          <div class="view-subtitle">Diseño estructural — la geotecnia es dato de entrada; se calculan diámetro, número de pilotes, longitud y acero</div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start">
+        <!-- IZQUIERDA: entradas -->
+        <div style="display:flex;flex-direction:column;gap:20px">
+          <div class="card">
+            <div class="card-header"><div class="card-title">Cargas</div></div>
+            <div class="field-row">
+              <div class="field">
+                <label class="field-label">Carga de servicio P <span class="unit">tonf</span></label>
+                <input type="number" id="pil_P" data-mag="force" class="input" value="250" step="10">
+              </div>
+              <div class="field">
+                <label class="field-label">Factor de carga (P<sub>u</sub>)</label>
+                <input type="number" id="pil_fcarga" class="input" value="1.5" step="0.05">
+              </div>
+            </div>
+            <div class="hint mt-3">P es la carga axial de servicio total que la columna transmite al grupo de pilotes.</div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><div class="card-title">Geotecnia (del estudio de suelos)</div></div>
+            <div class="field-row">
+              <div class="field">
+                <label class="field-label">Fricción lateral f<sub>s</sub> <span class="unit">tonf/m²</span></label>
+                <input type="number" id="pil_fs" data-mag="pressure" class="input" value="6" step="0.5">
+              </div>
+              <div class="field">
+                <label class="field-label">Resistencia de punta q<sub>p</sub> <span class="unit">tonf/m²</span></label>
+                <input type="number" id="pil_qp" data-mag="pressure" class="input" value="250" step="10">
+              </div>
+            </div>
+            <div class="field" style="max-width:260px">
+              <label class="field-label">FS geotécnico</label>
+              <input type="number" id="pil_FS" class="input" value="2.5" step="0.5">
+            </div>
+            <div class="hint mt-3">Valores últimos por unidad de área del estudio geotécnico. Q<sub>adm</sub> = (q<sub>p</sub>·A<sub>punta</sub> + f<sub>s</sub>·πDL)/FS.</div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><div class="card-title">Materiales y refuerzo</div></div>
+            <div class="field-row">
+              <div class="field">
+                <label class="field-label">f'c <span class="unit">kgf/cm²</span></label>
+                <input type="number" id="pil_fc" data-mag="stress" class="input" value="280" step="5">
+              </div>
+              <div class="field">
+                <label class="field-label">fy <span class="unit">kgf/cm²</span></label>
+                <input type="number" id="pil_fy" data-mag="stress" class="input" value="4200" step="100">
+              </div>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label class="field-label">Cuantía ρ <span class="unit">%</span></label>
+                <input type="number" id="pil_rho" class="input" value="1.0" step="0.1">
+              </div>
+              <div class="field">
+                <label class="field-label">Ø barra longitudinal <span class="unit">mm</span></label>
+                <input type="number" id="pil_dblong" class="input" value="19.05" step="0.1">
+              </div>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label class="field-label">Refuerzo transversal</label>
+                <select id="pil_tiporef" class="input">
+                  <option value="espiral">Zuncho (espiral)</option>
+                  <option value="estribo">Estribos</option>
+                </select>
+              </div>
+              <div class="field">
+                <label class="field-label">Ø transversal <span class="unit">mm</span></label>
+                <input type="number" id="pil_dbtrans" class="input" value="9.53" step="0.1">
+              </div>
+            </div>
+            <div class="field" style="max-width:260px">
+              <label class="field-label">Recubrimiento libre <span class="unit">m</span></label>
+              <input type="number" id="pil_rec" data-mag="length" class="input" value="0.075" step="0.005">
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><div class="card-title">Dimensionamiento</div></div>
+            <div class="field-row">
+              <div class="field">
+                <label class="field-label">Diámetro D <span class="unit">m</span></label>
+                <input type="number" id="pil_D" data-mag="length" class="input" placeholder="auto" step="0.05">
+              </div>
+              <div class="field">
+                <label class="field-label">N° de pilotes</label>
+                <input type="number" id="pil_N" class="input" placeholder="auto" step="1" min="1">
+              </div>
+            </div>
+            <div class="field" style="max-width:260px">
+              <label class="field-label">Longitud máxima L <span class="unit">m</span></label>
+              <input type="number" id="pil_Lmax" data-mag="length" class="input" value="25" step="1">
+            </div>
+            <div class="hint mt-3">Deja D y N° de pilotes vacíos para que ARGeoSt los dimensione. La longitud L siempre se calcula.</div>
+          </div>
+        </div>
+
+        <!-- DERECHA: resultados + esquema -->
+        <div style="display:flex;flex-direction:column;gap:20px">
+          <div class="card">
+            <div class="card-header"><div class="card-title">Resultados</div></div>
+            <div class="kpi-grid" id="pil-kpis" style="grid-template-columns:1fr 1fr 1fr">
+              <div class="kpi"><div class="kpi-label">N° de pilotes</div><div class="kpi-value" id="pk-n">—</div><div class="kpi-unit">requeridos</div></div>
+              <div class="kpi"><div class="kpi-label">Diámetro D</div><div class="kpi-value" id="pk-d">—</div><div class="kpi-unit">m</div></div>
+              <div class="kpi"><div class="kpi-label">Longitud L</div><div class="kpi-value" id="pk-l">—</div><div class="kpi-unit">m</div></div>
+              <div class="kpi"><div class="kpi-label">Acero (ρ)</div><div class="kpi-value" id="pk-as">—</div><div class="kpi-unit">cm²</div></div>
+              <div class="kpi"><div class="kpi-label">φPn / pilote</div><div class="kpi-value" id="pk-phipn">—</div><div class="kpi-unit">tonf</div></div>
+              <div class="kpi"><div class="kpi-label">Q admisible</div><div class="kpi-value" id="pk-qadm">—</div><div class="kpi-unit">tonf</div></div>
+            </div>
+            <div id="pil-detalle" style="margin-top:16px"></div>
+          </div>
+
+          <div class="card">
+            <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+              <div class="card-title">Esquema del pilote</div>
+              <div class="vista-toggle" role="group" aria-label="Modo de vista">
+                <button type="button" class="vista-btn active" data-vista-pile="2d">2D</button>
+                <button type="button" class="vista-btn" data-vista-pile="3d">3D</button>
+              </div>
+            </div>
+            <div class="preview-frame" id="pil-preview" style="min-height:440px">
+              <div style="padding:36px;text-align:center;color:var(--text-muted)">Presiona "Calcular" para ver el esquema y los resultados.</div>
+            </div>
+            <div class="hint mt-3" id="pile-vista-hint" style="display:none">Arrastra para orbitar · rueda para acercar/alejar · clic derecho para desplazar · doble clic para reencuadrar.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== VISTA: MEMORIA DEL PILOTE ===== -->
+    <section class="view" data-view="pilereport" data-module="pilote">
+      <div class="view-header">
+        <div>
+          <div class="view-title">Memoria de cálculo</div>
+          <div class="view-subtitle">Reporte PDF: datos, capacidad axial y diseño estructural</div>
+        </div>
+        <button class="btn btn-primary" id="btn-pile-pdf" type="button">Generar memoria (PDF)</button>
+      </div>
+      <div class="card">
+        <div style="padding:8px 4px">
+          <p style="color:var(--text-secondary);font-size:14px;line-height:1.6;margin:0 0 14px">
+            Genera un documento PDF con el esquema del pilote, el detalle de la capacidad de carga axial
+            (punta + fuste por estrato, Q<sub>adm</sub> y número de pilotes) y la verificación estructural
+            como columna corta. Usa los datos cargados en <b>Diseño de Pilotes</b> y en <b>Datos del Proyecto</b>.
+          </p>
+          <button class="btn btn-primary" id="btn-pile-pdf-2" type="button">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <span>Generar memoria (PDF)</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== VISTA: ZAPATA (diseño) ===== -->
+    <section class="view" data-view="footing" data-module="zapata">
+      <div class="view-header">
+        <div>
+          <div class="view-title">Diseño de Zapata</div>
+          <div class="view-subtitle">Zapata aislada — dimensionamiento geotécnico y diseño estructural NSR-10</div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start">
+        <!-- IZQUIERDA: entradas -->
+        <div style="display:flex;flex-direction:column;gap:20px">
+          <div class="card">
+            <div class="card-header"><div class="card-title">Columna y cargas</div></div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">Columna c1 <span class="unit">m</span></label>
+                <input type="number" id="zap_c1" data-mag="length" class="input" value="0.40" step="0.05"></div>
+              <div class="field"><label class="field-label">Columna c2 <span class="unit">m</span></label>
+                <input type="number" id="zap_c2" data-mag="length" class="input" value="0.40" step="0.05"></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">Carga de servicio P <span class="unit">tonf</span></label>
+                <input type="number" id="zap_P" data-mag="force" class="input" value="100" step="5"></div>
+              <div class="field"><label class="field-label">Momento M <span class="unit">tonf·m</span></label>
+                <input type="number" id="zap_M" data-mag="moment" class="input" value="0" step="1"></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">Carga última P<sub>u</sub> <span class="unit">tonf (opc.)</span></label>
+                <input type="number" id="zap_Pu" data-mag="force" class="input" placeholder="(vacío = factor)" step="5"></div>
+              <div class="field"><label class="field-label">Factor de carga</label>
+                <input type="number" id="zap_fcarga" class="input" value="1.5" step="0.1"></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><div class="card-title">Suelo y capacidad portante</div></div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">q admisible <span class="unit">tonf/m²</span></label>
+                <input type="number" id="zap_qadm" data-mag="pressure" class="input" value="20" step="1"></div>
+              <div class="field"><label class="field-label">Profundidad D<sub>f</sub> <span class="unit">m</span></label>
+                <input type="number" id="zap_Df" data-mag="length" class="input" value="1.5" step="0.1"></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">γ suelo <span class="unit">tonf/m³</span></label>
+                <input type="number" id="zap_gs" data-mag="gamma" class="input" value="1.80" step="0.05"></div>
+              <div class="field"><label class="field-label">γ concreto <span class="unit">tonf/m³</span></label>
+                <input type="number" id="zap_gc" data-mag="gamma" class="input" value="2.40" step="0.05"></div>
+            </div>
+            <div class="field" style="max-width:260px">
+              <label class="field-label">Posición de la columna</label>
+              <select id="zap_pos" class="input">
+                <option value="interior">Interior</option>
+                <option value="borde">De borde</option>
+                <option value="esquina">De esquina</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><div class="card-title">Materiales y refuerzo</div></div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">f'c <span class="unit">kgf/cm²</span></label>
+                <input type="number" id="zap_fc" data-mag="stress" class="input" value="210" step="5"></div>
+              <div class="field"><label class="field-label">fy <span class="unit">kgf/cm²</span></label>
+                <input type="number" id="zap_fy" data-mag="stress" class="input" value="4200" step="100"></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">Ø barra <span class="unit">mm</span></label>
+                <input type="number" id="zap_db" class="input" value="19.05" step="0.1"></div>
+              <div class="field"><label class="field-label">Recubrimiento <span class="unit">m</span></label>
+                <input type="number" id="zap_rec" data-mag="length" class="input" value="0.075" step="0.005"></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><div class="card-title">Dimensiones (opcional)</div></div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">Ancho B <span class="unit">m</span></label>
+                <input type="number" id="zap_B" data-mag="length" class="input" placeholder="auto" step="0.05"></div>
+              <div class="field"><label class="field-label">Largo L <span class="unit">m</span></label>
+                <input type="number" id="zap_L" data-mag="length" class="input" placeholder="auto" step="0.05"></div>
+            </div>
+            <div class="field" style="max-width:260px">
+              <label class="field-label">Espesor h <span class="unit">m</span></label>
+              <input type="number" id="zap_h" data-mag="length" class="input" placeholder="auto" step="0.05">
+            </div>
+            <div class="hint mt-3">Deja B, L y h vacíos para que ARGeoSt dimensione automáticamente.</div>
+          </div>
+        </div>
+
+        <!-- DERECHA: resultados + esquema -->
+        <div style="display:flex;flex-direction:column;gap:20px">
+          <div class="card">
+            <div class="card-header"><div class="card-title">Resultados</div></div>
+            <div class="kpi-grid" id="zap-kpis" style="grid-template-columns:1fr 1fr 1fr">
+              <div class="kpi"><div class="kpi-label">Dimensión B×L</div><div class="kpi-value" id="zk-bl">—</div><div class="kpi-unit">m</div></div>
+              <div class="kpi"><div class="kpi-label">Espesor h</div><div class="kpi-value" id="zk-h">—</div><div class="kpi-unit">m</div></div>
+              <div class="kpi"><div class="kpi-label">Peralte d</div><div class="kpi-value" id="zk-d">—</div><div class="kpi-unit">m</div></div>
+              <div class="kpi"><div class="kpi-label">q máx</div><div class="kpi-value" id="zk-q">—</div><div class="kpi-unit">tonf/m²</div></div>
+              <div class="kpi"><div class="kpi-label">Punzonamiento</div><div class="kpi-value" id="zk-punz">—</div><div class="kpi-unit">D/C</div></div>
+              <div class="kpi"><div class="kpi-label">Acero (mayor)</div><div class="kpi-value" id="zk-as">—</div><div class="kpi-unit">cm²</div></div>
+            </div>
+            <div id="zap-detalle" style="margin-top:16px"></div>
+          </div>
+          <div class="card">
+            <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+              <div class="card-title">Esquema — planta y sección</div>
+              <div class="vista-toggle" role="group" aria-label="Modo de vista">
+                <button type="button" class="vista-btn active" data-vista-zap="2d">2D</button>
+                <button type="button" class="vista-btn" data-vista-zap="3d">3D</button>
+              </div>
+            </div>
+            <div class="preview-frame" id="zap-preview" style="min-height:460px">
+              <div style="padding:36px;text-align:center;color:var(--text-muted)">Presiona "Calcular" para ver el dimensionamiento y el esquema.</div>
+            </div>
+            <div class="hint mt-3" id="zap-vista-hint" style="display:none">Arrastra para orbitar · rueda para acercar/alejar · clic derecho para desplazar · doble clic para reencuadrar.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== VISTA: ZAPATA MEMORIA ===== -->
+    <section class="view" data-view="footingreport" data-module="zapata">
+      <div class="view-header">
+        <div>
+          <div class="view-title">Memoria de cálculo</div>
+          <div class="view-subtitle">Reporte PDF de la zapata aislada</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">Generar memoria</div></div>
+        <p style="color:var(--text-secondary);line-height:1.6;margin:0 0 16px">
+          Genera un documento PDF con los datos de entrada, el esquema en planta y sección, el
+          dimensionamiento geotécnico (presiones de contacto) y el diseño estructural completo
+          (punzonamiento, cortante en una vía y flexión con refuerzo). Usa los datos cargados en
+          <b>Diseño de Zapata</b> y en <b>Datos del Proyecto</b>.
+        </p>
+        <button class="btn btn-primary" id="btn-footing-pdf" type="button">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span>Generar memoria (PDF)</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- ===== VISTA: DADO (diseño) ===== -->
+    <section class="view" data-view="dado" data-module="dado">
+      <div class="view-header">
+        <div>
+          <div class="view-title">Diseño del Dado</div>
+          <div class="view-subtitle">Cabezal / encepado sobre 1 a 6 pilotes — reacciones, punzonamiento, cortante, flexión y bielas (NSR-10)</div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start">
+        <!-- IZQUIERDA: entradas -->
+        <div style="display:flex;flex-direction:column;gap:20px">
+          <div class="card">
+            <div class="card-header"><div class="card-title">Pilotes y grupo</div></div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">N° de pilotes</label>
+                <select id="dado_n" class="input">
+                  <option value="1">1 pilote</option>
+                  <option value="2">2 pilotes</option>
+                  <option value="3">3 pilotes (triangular)</option>
+                  <option value="4" selected>4 pilotes</option>
+                  <option value="5">5 pilotes</option>
+                  <option value="6">6 pilotes</option>
+                </select></div>
+              <div class="field"><label class="field-label">Ø pilote D<sub>p</sub> <span class="unit">m</span></label>
+                <input type="number" id="dado_Dp" data-mag="length" class="input" value="0.45" step="0.05"></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">Separación s <span class="unit">m</span></label>
+                <input type="number" id="dado_s" data-mag="length" class="input" placeholder="auto (3·Dp)" step="0.05"></div>
+              <div class="field"><label class="field-label">Borde e <span class="unit">m</span></label>
+                <input type="number" id="dado_e" data-mag="length" class="input" placeholder="auto" step="0.05"></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">Capacidad del pilote <span class="unit">tonf</span></label>
+                <input type="number" id="dado_cap" data-mag="force" class="input" value="120" step="5"></div>
+              <div class="field"><label class="field-label">Factor peso propio</label>
+                <input type="number" id="dado_fp" class="input" value="1.2" step="0.05"></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><div class="card-title">Columna y cargas</div></div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">Columna c1 <span class="unit">m</span></label>
+                <input type="number" id="dado_c1" data-mag="length" class="input" value="0.50" step="0.05"></div>
+              <div class="field"><label class="field-label">Columna c2 <span class="unit">m</span></label>
+                <input type="number" id="dado_c2" data-mag="length" class="input" value="0.50" step="0.05"></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">Carga última P<sub>u</sub> <span class="unit">tonf</span></label>
+                <input type="number" id="dado_Pu" data-mag="force" class="input" value="400" step="10"></div>
+              <div class="field"><label class="field-label">Posición columna</label>
+                <select id="dado_pos" class="input">
+                  <option value="interior">Interior</option>
+                  <option value="borde">De borde</option>
+                  <option value="esquina">De esquina</option>
+                </select></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">Momento M<sub>ux</sub> <span class="unit">tonf·m</span></label>
+                <input type="number" id="dado_Mux" data-mag="moment" class="input" value="0" step="1"></div>
+              <div class="field"><label class="field-label">Momento M<sub>uy</sub> <span class="unit">tonf·m</span></label>
+                <input type="number" id="dado_Muy" data-mag="moment" class="input" value="0" step="1"></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><div class="card-title">Materiales y refuerzo</div></div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">f'c <span class="unit">kgf/cm²</span></label>
+                <input type="number" id="dado_fc" data-mag="stress" class="input" value="280" step="5"></div>
+              <div class="field"><label class="field-label">fy <span class="unit">kgf/cm²</span></label>
+                <input type="number" id="dado_fy" data-mag="stress" class="input" value="4200" step="100"></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">Ø barra inferior <span class="unit">mm</span></label>
+                <input type="number" id="dado_db" class="input" value="19.05" step="0.1"></div>
+              <div class="field"><label class="field-label">Recubrimiento <span class="unit">m</span></label>
+                <input type="number" id="dado_rec" data-mag="length" class="input" value="0.075" step="0.005"></div>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label class="field-label">Espesor h <span class="unit">m</span></label>
+                <input type="number" id="dado_h" data-mag="length" class="input" placeholder="auto" step="0.05">
+              </div>
+              <div class="field">
+                <label class="field-label">Diseño del acero inferior</label>
+                <select id="dado_metodo" class="input">
+                  <option value="ambos" selected>Flexión y bielas (el mayor)</option>
+                  <option value="flexion">Solo flexión (seccional)</option>
+                  <option value="bielas">Solo bielas (puntal-tensor)</option>
+                </select>
+              </div>
+            </div>
+            <div class="hint mt-3">Deja s, e y h vacíos para que ARGeoSt dimensione automáticamente. El método de bielas conviene en encepados rígidos (regiones D).</div>
+          </div>
+        </div>
+
+        <!-- DERECHA: resultados + esquema -->
+        <div style="display:flex;flex-direction:column;gap:20px">
+          <div class="card">
+            <div class="card-header"><div class="card-title">Resultados</div></div>
+            <div class="kpi-grid" id="dado-kpis" style="grid-template-columns:1fr 1fr 1fr">
+              <div class="kpi"><div class="kpi-label">Dimensión Bx×Ly</div><div class="kpi-value" id="dk-bl">—</div><div class="kpi-unit">m</div></div>
+              <div class="kpi"><div class="kpi-label">Espesor h</div><div class="kpi-value" id="dk-h">—</div><div class="kpi-unit">m</div></div>
+              <div class="kpi"><div class="kpi-label">Peralte d</div><div class="kpi-value" id="dk-d">—</div><div class="kpi-unit">m</div></div>
+              <div class="kpi"><div class="kpi-label">R máx pilote</div><div class="kpi-value" id="dk-pile">—</div><div class="kpi-unit">D/C</div></div>
+              <div class="kpi"><div class="kpi-label">Punzonamiento</div><div class="kpi-value" id="dk-punz">—</div><div class="kpi-unit">D/C</div></div>
+              <div class="kpi"><div class="kpi-label">Acero (mayor)</div><div class="kpi-value" id="dk-as">—</div><div class="kpi-unit">cm²</div></div>
+            </div>
+            <div id="dado-detalle" style="margin-top:16px"></div>
+          </div>
+          <div class="card">
+            <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+              <div class="card-title">Esquema — planta y sección</div>
+              <div class="vista-toggle" role="group" aria-label="Modo de vista">
+                <button type="button" class="vista-btn active" data-vista-dado="2d">2D</button>
+                <button type="button" class="vista-btn" data-vista-dado="3d">3D</button>
+              </div>
+            </div>
+            <div class="preview-frame" id="dado-preview" style="min-height:460px">
+              <div style="padding:36px;text-align:center;color:var(--text-muted)">Presiona "Calcular" para ver el dimensionamiento y el esquema.</div>
+            </div>
+            <div class="hint mt-3" id="dado-vista-hint" style="display:none">Haz <b>clic</b> en un elemento (cabezal, pilote o columna) para editar sus dimensiones. Arrastra para orbitar · rueda para acercar · doble clic para reencuadrar.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== VISTA: DADO MEMORIA ===== -->
+    <section class="view" data-view="dadoreport" data-module="dado">
+      <div class="view-header">
+        <div>
+          <div class="view-title">Memoria de cálculo</div>
+          <div class="view-subtitle">Reporte PDF del dado / cabezal de pilotes</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">Generar memoria</div></div>
+        <p style="color:var(--text-secondary);line-height:1.6;margin:0 0 16px">
+          Genera un documento PDF con los datos de entrada, el esquema en planta y sección, las
+          reacciones en los pilotes, la clasificación rígido/flexible y el diseño estructural completo
+          (punzonamiento de columna y pilotes, cortante en una vía, flexión con refuerzo, método de
+          bielas y anclaje). Usa los datos cargados en <b>Diseño del Dado</b> y en <b>Datos del Proyecto</b>.
+        </p>
+        <button class="btn btn-primary" id="btn-dado-pdf" type="button">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span>Generar memoria (PDF)</span>
+        </button>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<div id="toaster"></div>
+
+<script src="{{ url_for('static', filename='js/vendor/three.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/vendor/OrbitControls.js') }}"></script>
+<script src="{{ url_for('static', filename='js/wall_svg.js') }}"></script>
+<script src="{{ url_for('static', filename='js/wall_3d.js') }}"></script>
+<script src="{{ url_for('static', filename='js/pilote_3d.js') }}"></script>
+<script src="{{ url_for('static', filename='js/zapata_3d.js') }}"></script>
+<script src="{{ url_for('static', filename='js/dado_3d.js') }}"></script>
+<script src="{{ url_for('static', filename='js/pdf_modal.js') }}"></script>
+<script src="{{ url_for('static', filename='js/argeost.js') }}"></script>
+<script src="{{ url_for('static', filename='js/pilotes.js') }}"></script>
+<script src="{{ url_for('static', filename='js/zapatas.js') }}"></script>
+<script src="{{ url_for('static', filename='js/dado.js') }}"></script>
+</body>
+</html>

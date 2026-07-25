@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c \"import sys; print\\(sys.version\\)\")",
+      "Bash(python -c ' *)",
+      "Bash(python ../tests/test_combinaciones.py)",
+      "Bash(python -c \"import app; print\\('app.py importa OK, rutas:', len\\([r for r in app.app.url_map.iter_rules\\(\\)]\\)\\)\")",
+      "Bash(python \"C:/Users/user/AppData/Local/Temp/claude/C--APPS-ARGEOSTR-ARGEOSTR/f6e5eb1f-ac17-43c9-a91b-c28c2ff3e20c/scratchpad/verificar.py\")",
+      "Bash(cp \"C:/Users/user/AppData/Local/Temp/claude/C--APPS-ARGEOSTR-ARGEOSTR/f6e5eb1f-ac17-43c9-a91b-c28c2ff3e20c/scratchpad/verificar.py\" \"C:/APPS/ARGEOSTR/ARGEOSTR/python/_verificar_tmp.py\")",
+      "Bash(python _verificar_tmp.py)",
+      "Bash(where py *)",
+      "Bash(py -3 --version)",
+      "Read(//c/Users/user/AppData/Local/Programs/Python/**)",
+      "Bash(powershell -NoProfile -Command \"\\(Get-Command python\\).Source\")",
+      "Bash(py -3 _verificar_tmp.py)",
+      "Bash(C:/Users/user/AppData/Local/Programs/Python/Python314/python.exe -c 'import flask, matplotlib, reportlab; print\\('\\\\''deps OK'\\\\'', flask.__version__\\)')",
+      "Bash(C:/Python314/python.exe -c 'import flask,matplotlib,reportlab; print\\('\\\\''deps OK, flask'\\\\'', flask.__version__\\)')",
+      "PowerShell($env:PYTHONHOME=\"\"; $env:PYTHONPATH=\"\"; Copy-Item \"C:/Users/user/AppData/Local/Temp/claude/C--APPS-ARGEOSTR-ARGEOSTR/f6e5eb1f-ac17-43c9-a91b-c28c2ff3e20c/scratchpad/verificar.py\" \"C:/APPS/ARGEOSTR/ARGEOSTR/python/_verificar_tmp.py\" -Force; Set-Location \"C:/APPS/ARGEOSTR/ARGEOSTR/python\"; python _verificar_tmp.py; Remove-Item \"C:/APPS/ARGEOSTR/ARGEOSTR/python/_verificar_tmp.py\" -Force)",
+      "PowerShell(Get-Command -All python, python3, py -ErrorAction SilentlyContinue | Select-Object Name, Source; Write-Output \"--- flask location ---\"; Get-ChildItem \"C:\\\\Users\\\\user\\\\AppData\\\\Local\\\\Programs\\\\Python\" -Recurse -Filter \"flask\" -Directory -ErrorAction SilentlyContinue | Select-Object -First 3 FullName; Write-Output \"--- python.exe candidates ---\"; @\\(\"C:\\\\Users\\\\user\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python314\\\\python.exe\",\"C:\\\\Python314\\\\python.exe\"\\) | ForEach-Object { if \\(Test-Path $_\\) { Write-Output \"EXISTS $_\" } })",
+      "PowerShell(& \"C:\\\\Users\\\\user\\\\AppData\\\\Local\\\\Python\\\\bin\\\\python.exe\" \"C:/APPS/ARGEOSTR/ARGEOSTR/python/_ka_tmp.py\")",
+      "Bash(cd \"C:/Users/user/.claude/projects/C--APPS-ARGEOSTR-ARGEOSTR/memory\" && ls -la 2>/dev/null && echo \"--- MEMORY.md ---\" && cat MEMORY.md 2>/dev/null || echo \"\\(no existe MEMORY.md\\)\")",
+      "PowerShell(& \"C:\\\\Users\\\\user\\\\AppData\\\\Local\\\\Python\\\\bin\\\\python.exe\" -m pip install --quiet pypdf 2>&1)",
+      "PowerShell(& \"C:\\\\Users\\\\user\\\\AppData\\\\Local\\\\Python\\\\bin\\\\python.exe\" -c \"import pypdf; print\\('pypdf', pypdf.__version__\\)\" 2>$null)",
+      "PowerShell(& \"C:\\\\Users\\\\user\\\\AppData\\\\Local\\\\Python\\\\bin\\\\python.exe\" \"C:\\\\APPS\\\\ARGEOSTR\\\\ARGEOSTR\\\\_dasfind.py\" 2>$null)",
+      "Bash(\"C:/Users/user/AppData/Local/Python/bin/python.exe\" -c \"import flask,matplotlib,reportlab; print\\('flask',flask.__version__\\); print\\('matplotlib',matplotlib.__version__\\); print\\('reportlab',reportlab.Version\\)\")",
+      "PowerShell(& \"C:\\\\Users\\\\user\\\\AppData\\\\Local\\\\Python\\\\bin\\\\python.exe\" \"C:\\\\APPS\\\\ARGEOSTR\\\\ARGEOSTR\\\\_dastext.py\" 2>$null)"
+    ]
+  }
+}

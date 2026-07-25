@@ -1,0 +1,60 @@
+{
+  "name": "argeost",
+  "productName": "ARGeoSt",
+  "version": "1.0.0",
+  "description": "ARGeoSt — Diseño de muros de contención NSR-10 (Colombia)",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "package": "electron-forge package",
+    "make": "electron-forge make"
+  },
+  "keywords": ["geotecnia", "muros", "NSR-10", "contención"],
+  "author": {
+    "name": "ARGeoSt",
+    "email": "soporte@argeost.local"
+  },
+  "license": "Proprietary",
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "@electron-forge/cli": "^7.4.0",
+    "@electron-forge/maker-squirrel": "^7.4.0",
+    "@electron-forge/maker-zip": "^7.4.0"
+  },
+  "config": {
+    "forge": {
+      "packagerConfig": {
+        "name": "ARGeoSt",
+        "executableName": "ARGeoSt",
+        "icon": "src/assets/icon",
+        "asar": true,
+        "extraResource": [
+          "python-backend"
+        ],
+        "ignore": [
+          "^/python($|/)",
+          "^/build_backend\\.bat$",
+          "^/test_lifecycle\\.js$",
+          "/__pycache__/",
+          "\\.pyc$"
+        ]
+      },
+      "rebuildConfig": {},
+      "makers": [
+        {
+          "name": "@electron-forge/maker-squirrel",
+          "config": {
+            "name": "ARGeoSt",
+            "setupExe": "ARGeoSt-Setup.exe",
+            "iconUrl": "https://raw.githubusercontent.com/example/argeost/main/icon.ico",
+            "setupIcon": "src/assets/icon.ico"
+          }
+        },
+        {
+          "name": "@electron-forge/maker-zip",
+          "platforms": ["darwin", "linux"]
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,30 @@
+# ── Node / Electron ──────────────────────────────────────────────
+node_modules/
+out/
+
+# ── Python ───────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# ── Logs y runtime ───────────────────────────────────────────────
+logs/
+python/logs/
+*.log
+port.txt
+
+# ── Salidas de build (backend PyInstaller y empaquetado) ─────────
+python-backend/
+build/
+dist/
+python/build/
+python/dist/
+
+# ── Bibliografía: PDFs grandes con derechos de autor, NO versionar ─
+libros/
+
+# ── Sistema operativo ────────────────────────────────────────────
+.DS_Store
+Thumbs.db

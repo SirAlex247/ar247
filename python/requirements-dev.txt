@@ -1,0 +1,7 @@
+# Dependencias de desarrollo (pruebas y empaquetado). Instalar con:
+#     pip install -r requirements-dev.txt
+-r requirements.txt
+
+pytest>=8.0            # runner de pruebas (opcional: existe tests/run_all.py)
+pypdf>=5.0            # lectura de PDFs (validación contra los ejemplos de Das)
+pyinstaller>=6.0     # empaquetado del backend a ejecutable autocontenido
