@@ -7,18 +7,29 @@
   "scripts": {
     "start": "electron .",
     "package": "electron-forge package",
-    "make": "electron-forge make"
+    "make": "electron-forge make",
+    "publish": "electron-forge publish"
   },
-  "keywords": ["geotecnia", "muros", "NSR-10", "contención"],
+  "keywords": [
+    "geotecnia",
+    "muros",
+    "NSR-10",
+    "contención"
+  ],
   "author": {
     "name": "CimX",
     "email": "soporte@cimx.local"
   },
   "license": "Proprietary",
   "devDependencies": {
-    "electron": "^31.0.0",
     "@electron-forge/cli": "^7.4.0",
     "@electron-forge/maker-squirrel": "^7.4.0",
-    "@electron-forge/maker-zip": "^7.4.0"
+    "@electron-forge/maker-zip": "^7.4.0",
+    "@electron-forge/publisher-github": "^7.11.2",
+    "electron": "^31.0.0"
+  },
+  "dependencies": {
+    "electron-squirrel-startup": "^1.0.1",
+    "update-electron-app": "^3.3.0"
   }
 }

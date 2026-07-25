@@ -66,4 +66,23 @@ module.exports = {
       platforms: ['darwin', 'linux'],
     },
   ],
+  // Publicación de releases (para el auto-update). `npm run publish` sube los
+  // artefactos (RELEASES, *.nupkg, *-Setup.exe) a GitHub Releases. Requiere:
+  //   GITHUB_TOKEN     token con permiso 'repo'
+  //   CIMX_GH_OWNER    dueño del repo (usuario u organización)
+  //   CIMX_GH_REPO     nombre del repo (por defecto "CimX")
+  // Ver UPDATES.md.
+  publishers: [
+    {
+      name: '@electron-forge/publisher-github',
+      config: {
+        repository: {
+          owner: process.env.CIMX_GH_OWNER || 'tu-usuario-github',
+          name: process.env.CIMX_GH_REPO || 'CimX',
+        },
+        prerelease: false,
+        draft: true,   // crea el release como borrador para revisarlo antes de publicar
+      },
+    },
+  ],
 };

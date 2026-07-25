@@ -14,6 +14,15 @@
 'use strict';
 
 const { app, BrowserWindow, Menu, shell, dialog } = require('electron');
+
+// Squirrel (Windows): al instalar/actualizar/desinstalar, Squirrel lanza la
+// app con flags especiales para crear/quitar accesos directos. Este módulo lo
+// maneja y hace app.quit() en esos casos; debe ir lo más arriba posible.
+if (require('electron-squirrel-startup')) {
+  app.quit();
+}
+
+const { initAutoUpdates } = require('./updater');
 const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
@@ -328,6 +337,8 @@ app.whenReady().then(async () => {
   try {
     await startPythonBackend();
     createWindow();
+    // Comprobación de actualizaciones (solo en producción; nunca bloquea).
+    initAutoUpdates(console);
   } catch (err) {
     dialog.showErrorBox(
       'Error iniciando CimX',
