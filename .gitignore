@@ -28,6 +28,7 @@ python/dist/
 
 # ── Bibliografía: PDFs grandes con derechos de autor, NO versionar ─
 libros/
+Libros y Normas/
 
 # ── Config local de Claude Code (rutas específicas de la máquina) ─
 .claude/launch.json
@@ -36,3 +37,4 @@ libros/
 # ── Sistema operativo ────────────────────────────────────────────
 .DS_Store
 Thumbs.db
+desktop.ini
