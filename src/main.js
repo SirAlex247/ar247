@@ -22,6 +22,15 @@ if (require('electron-squirrel-startup')) {
   app.quit();
 }
 
+// En entornos con GPU restringida (escritorio remoto, máquinas virtuales o
+// drivers sin aceleración) el proceso de GPU de Chromium no arranca y Electron
+// aborta con «GPU process isn't usable. Goodbye.». Forzamos render por software
+// para que la ventana abra siempre. No afecta a equipos con GPU normal.
+app.disableHardwareAcceleration();
+app.commandLine.appendSwitch('disable-gpu');
+app.commandLine.appendSwitch('disable-gpu-sandbox');
+app.commandLine.appendSwitch('disable-software-rasterizer');
+
 const { initAutoUpdates } = require('./updater');
 const { spawn } = require('child_process');
 const path = require('path');
