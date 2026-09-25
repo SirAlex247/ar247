@@ -133,9 +133,11 @@ def generar_memoria_pilote_diseno(datos, resultado, entradas) -> bytes:
 
     fc = float(entradas.get("fc", 21) or 21)
     fy = float(entradas.get("fy", 420) or 420)
+    ccp = str(resultado.get("norma", "NSR10")) == "CCP14"
+    norm_titulo = "CCP-14 (LRFD-AASHTO)" if ccp else "NSR-10 / ACI 318"
 
     el.append(Paragraph("Memoria de cálculo — Diseño de pilotes", h1))
-    el.append(Paragraph("Diseño estructural a partir de la carga y de los parámetros geotécnicos · NSR-10 / ACI 318", small))
+    el.append(Paragraph(f"Diseño estructural a partir de la carga y de los parámetros geotécnicos · {norm_titulo}", small))
     el.append(HRFlowable(width="100%", thickness=1, color=VERDE, spaceBefore=6, spaceAfter=6))
     el.append(_tabla([
         ["Proyecto", getattr(datos, "proyecto", "") or "—", "Fecha", date.today().isoformat()],
@@ -148,7 +150,8 @@ def generar_memoria_pilote_diseno(datos, resultado, entradas) -> bytes:
         ["Parámetro", "Valor", "Parámetro", "Valor"],
         ["Carga de servicio P", f"{_tf(ca['P_servicio_kN']):.1f} tonf", "Factor de carga", f"{ca['factor_carga']:.2f}"],
         ["Fricción f_s", f"{_tm(g['f_s_kPa']):.1f} tonf/m²", "Punta q_p", f"{_tm(g['q_p_kPa']):.1f} tonf/m²"],
-        ["FS geotécnico", f"{g['FS']:.1f}", "Refuerzo transversal", tr["tipo"]],
+        (["Norma", "CCP-14 (LRFD)", "φ fuste / punta", f"{g['phi_fuste']} / {g['phi_punta']}"]
+         if ccp else ["FS geotécnico", f"{g['FS']:.1f}", "Refuerzo transversal", tr["tipo"]]),
         ["f'c", f"{fc:.0f} MPa", "fy", f"{fy:.0f} MPa"],
     ], [3.6 * cm, 4.0 * cm, 3.6 * cm, 4.0 * cm]))
 
@@ -182,16 +185,28 @@ def generar_memoria_pilote_diseno(datos, resultado, entradas) -> bytes:
          f"{_tf(e['Pu_pilote_kN']):.1f}", f"{e['ratio']}", "cumple" if e["cumple"] else "no cumple"],
     ], [2.6 * cm, 2.6 * cm, 2.8 * cm, 3.2 * cm, 1.8 * cm, 2.4 * cm]))
 
-    # 4. Verificación geotécnica
+    # 4. Verificación geotécnica (según norma)
     el.append(Paragraph("4. Capacidad geotécnica por pilote", h2))
-    el.append(Paragraph(
-        "Q<sub>últ</sub> = q_p·A_punta + f_s·(π·D·L) ; Q<sub>adm</sub> = Q<sub>últ</sub>/FS ≥ P_servicio/N.", p))
-    el.append(_tabla([
-        ["Q_punta (tonf)", "Q_fuste (tonf)", "Q_últ (tonf)", "Q_adm (tonf)", "P/pilote (tonf)", "D/C", "Estado"],
-        [f"{_tf(g['Qpunta_kN']):.1f}", f"{_tf(g['Qfuste_kN']):.1f}", f"{_tf(g['Qult_kN']):.1f}",
-         f"{_tf(g['Qadm_kN']):.1f}", f"{_tf(g['Pserv_pilote_kN']):.1f}", f"{g['ratio']}",
-         "cumple" if g["cumple"] else "no cumple"],
-    ], [2.5 * cm, 2.5 * cm, 2.3 * cm, 2.3 * cm, 2.5 * cm, 1.5 * cm, 2.2 * cm]))
+    if ccp:
+        el.append(Paragraph(
+            "Q<sub>últ</sub> = q_p·A_punta + f_s·(π·D·L). LRFD: "
+            "R<sub>r</sub> = φ<sub>p</sub>·Q<sub>punta</sub> + φ<sub>s</sub>·Q<sub>fuste</sub> ≥ P<sub>u</sub>/N "
+            f"(φ según el material, Tabla 10.5.5.2.4-1).", p))
+        el.append(_tabla([
+            ["Q_punta (tonf)", "Q_fuste (tonf)", "Q_últ (tonf)", "R_r (tonf)", "Pu/pilote (tonf)", "CDR", "Estado"],
+            [f"{_tf(g['Qpunta_kN']):.1f}", f"{_tf(g['Qfuste_kN']):.1f}", f"{_tf(g['Qult_kN']):.1f}",
+             f"{_tf(g['R_r_kN']):.1f}", f"{_tf(g['Pu_pilote_kN']):.1f}", f"{g['CDR']}",
+             "cumple" if g["cumple"] else "no cumple"],
+        ], [2.5 * cm, 2.5 * cm, 2.3 * cm, 2.3 * cm, 2.5 * cm, 1.5 * cm, 2.2 * cm]))
+    else:
+        el.append(Paragraph(
+            "Q<sub>últ</sub> = q_p·A_punta + f_s·(π·D·L) ; Q<sub>adm</sub> = Q<sub>últ</sub>/FS ≥ P_servicio/N.", p))
+        el.append(_tabla([
+            ["Q_punta (tonf)", "Q_fuste (tonf)", "Q_últ (tonf)", "Q_adm (tonf)", "P/pilote (tonf)", "D/C", "Estado"],
+            [f"{_tf(g['Qpunta_kN']):.1f}", f"{_tf(g['Qfuste_kN']):.1f}", f"{_tf(g['Qult_kN']):.1f}",
+             f"{_tf(g['Qadm_kN']):.1f}", f"{_tf(g['Pserv_pilote_kN']):.1f}", f"{g['ratio']}",
+             "cumple" if g["cumple"] else "no cumple"],
+        ], [2.5 * cm, 2.5 * cm, 2.3 * cm, 2.3 * cm, 2.5 * cm, 1.5 * cm, 2.2 * cm]))
 
     el.append(Spacer(1, 6))
     el.append(Paragraph(f"<b>Verificación global: {_ok(resultado['cumple'])}</b> "
@@ -201,6 +216,6 @@ def generar_memoria_pilote_diseno(datos, resultado, entradas) -> bytes:
 
     el.append(Spacer(1, 12))
     el.append(HRFlowable(width="100%", thickness=0.5, color=GRIS_CLARO))
-    el.append(Paragraph("Generado por CimX · Diseño de pilotes · NSR-10 / ACI 318", small))
+    el.append(Paragraph(f"Generado por CimX · Diseño de pilotes · {norm_titulo}", small))
     doc.build(el)
     return buf.getvalue()

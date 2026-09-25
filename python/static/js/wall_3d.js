@@ -72,17 +72,22 @@ window.CimXWall3D = (function () {
     const L = clamp(0.55 * Math.max(Wm, Hm), 1.2, 6.5);
 
     const gr = geom.ground;
-    // Suelo de cimentación (terracota)
-    [gr.below, gr.front_below, gr.back, gr.front_soil].forEach(p => {
+    // Suelo de cimentación (terracota). El suelo del lado frontal se hace
+    // translúcido para dejar ver la zapata embebida hasta la profundidad D.
+    [gr.below, gr.back].forEach(p => {
       g.add(extrudeMesh(p, L, COL.foundation, { roughness: 1.0 }));
     });
+    [gr.front_below, gr.front_soil].forEach(p => {
+      if (p) g.add(extrudeMesh(p, L, COL.foundation, { roughness: 1.0, opacity: 0.45 }));
+    });
     // Pasto frontal (verde)
-    g.add(extrudeMesh(gr.front_grass, L, COL.grass, { roughness: 1.0 }));
-    // Relleno (ocre) — ligeramente translúcido para no tapar el muro
-    g.add(extrudeMesh(geom.relleno, L, COL.fill, { roughness: 1.0, opacity: 0.96 }));
-    // Concreto: zapata + vástago/cuerpo, con aristas marcadas
+    g.add(extrudeMesh(gr.front_grass, L, COL.grass, { roughness: 1.0, opacity: 0.6 }));
+    // Concreto: zapata + vástago/cuerpo, con aristas marcadas (primero, opacos)
     g.add(extrudeMesh(geom.zapata, L, COL.concrete, { edges: true }));
     g.add(extrudeMesh(geom.vastago || geom.cuerpo, L, COL.concrete, { edges: true }));
+    // Relleno (ocre) translúcido — se dibuja al final para leerse como
+    // masa de tierra retenida sin tapar el muro ni la zapata.
+    g.add(extrudeMesh(geom.relleno, L, COL.fill, { roughness: 1.0, opacity: 0.5 }));
 
     g.userData.bbox3 = {
       min: new THREE.Vector3(bbox.xmin, bbox.ymin, -L / 2),

@@ -54,6 +54,10 @@ class Carga:
         x_aplicacion: Coordenada x desde el punto C (m), solo para verticales.
         y_aplicacion: Altura sobre la base (m), solo para horizontales.
         sentido:      +1 empuja/pesa hacia el muro; -1 lo resiste (pasivo).
+        material:     "concreto", "suelo_relleno", "suelo_cimentacion" o None.
+                      Solo lo usan las cargas de peso propio; permite a las
+                      normas LRFD (CCP-14) separar DC (concreto) de EV (suelo).
+                      No afecta el flujo NSR-10, que trata todo como D.
     """
 
     nombre: str
@@ -63,6 +67,7 @@ class Carga:
     x_aplicacion: float = 0.0
     y_aplicacion: float = 0.0
     sentido: int = 1
+    material: str | None = None
 
     def momento_respecto_C(self) -> float:
         """Momento de la carga respecto al punto C (puntera).
@@ -241,6 +246,7 @@ class CalculadoraCargas:
                 categoria=categoria,
                 x_aplicacion=sec.x_cg,
                 sentido=+1,
+                material=sec.material,   # concreto->DC, suelo->EV (LRFD/CCP-14)
             ))
 
         # 2) Empuje activo del relleno

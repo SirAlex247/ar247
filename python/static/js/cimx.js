@@ -124,13 +124,16 @@ function setupNav() {
 /* ---------- Módulos (dashboard / navegación por elemento) ---------- */
 const MODULO_VIEW = {
   summary: 'muro', geometry: 'muro', soils: 'muro', loads: 'muro',
-  materials: 'muro', results: 'muro', project: 'muro pilote zapata dado',
+  materials: 'muro', results: 'muro', project: 'muro pilote zapata placa caisson dado maquina',
   piles: 'pilote', pilereport: 'pilote',
   footing: 'zapata', footingreport: 'zapata',
+  placa: 'placa', placareport: 'placa',
+  caisson: 'caisson', caissonreport: 'caisson',
   dado: 'dado', dadoreport: 'dado',
+  maquina: 'maquina', maquinareport: 'maquina',
 };
-const MODULO_DEFAULT_VIEW = { muro: 'summary', pilote: 'piles', zapata: 'footing', dado: 'dado' };
-const MODULO_NOMBRE = { muro: 'Muros de contención', pilote: 'Pilotes', zapata: 'Zapatas', dado: 'Dados / Cabezales' };
+const MODULO_DEFAULT_VIEW = { muro: 'summary', pilote: 'piles', zapata: 'footing', placa: 'placa', caisson: 'caisson', dado: 'dado', maquina: 'maquina' };
+const MODULO_NOMBRE = { muro: 'Muros de contención', pilote: 'Pilotes', zapata: 'Zapatas', placa: 'Placas macizas', caisson: 'Caissons / pilas', dado: 'Dados / Cabezales', maquina: 'Cimentación de máquinas' };
 
 function etiquetarModulos() {
   // Asigna data-module a las vistas y a las acciones del header propias del muro.
@@ -277,6 +280,11 @@ function recolectar() {
     acero_fy:       toSI(getF('acero_fy'), 'stress'),
 
     metodo_empuje: getS('metodo_empuje') || 'rankine',
+
+    // Norma de diseño: NSR-10 (esfuerzos admisibles) o CCP-14 (LRFD-AASHTO)
+    norma:      getS('norma') || 'NSR10',
+    apoyo_roca: $('#apoyo_roca') ? $('#apoyo_roca').checked : false,
+    gamma_EQ:   getF('gamma_EQ') || 0.5,
   };
 }
 
@@ -515,8 +523,32 @@ function setEstadoFinal(j) {
   }
 }
 
+/* ---------- Adaptar textos e insignia según la norma ---------- */
+function aplicarNormaUI(j) {
+  const esCCP = (j && j.norma === 'CCP14');
+  const badge = $('#norma-badge');
+  if (badge) {
+    badge.textContent = esCCP ? 'CCP-14 · LRFD' : 'NSR-10';
+    badge.classList.toggle('ccp14', esCCP);
+  }
+  // Etiqueta del KPI de vuelco: FS (NSR-10) ↔ CDR (CCP-14)
+  const fsLabel = $('#kpi-fs')?.querySelector('.kpi-label');
+  if (fsLabel) fsLabel.textContent = esCCP ? 'CDR Vuelco (LRFD)' : 'FS Volcamiento';
+  // Nota de estabilidad
+  const hint = $('#hint-estabilidad');
+  if (hint) {
+    hint.innerHTML = esCCP
+      ? '<b>Estabilidad externa (CCP-14 · LRFD):</b> se verifica por relación '
+        + 'capacidad/demanda (CDR ≥ 1.0). El vuelco se controla con el límite '
+        + 'de excentricidad (|e| ≤ B/3 en suelo).'
+      : '<b>Estabilidad externa (NSR-10):</b> los FS mínimos son 2.0 '
+        + '(volcamiento), 1.5 (deslizamiento) y 3.0 (capacidad portante).';
+  }
+}
+
 /* ---------- Renderizar KPIs ---------- */
 function renderizarKPIs(j) {
+  aplicarNormaUI(j);
   const tm  = j.totales_momentos || {};
   const ver = j.verificaciones_raw || [];
   const setKpi = (id, val, unit, cls) => {
@@ -556,7 +588,7 @@ function renderizarVerificaciones(j) {
       <div class="kpi-label">${v.nombre}</div>
       <div class="kpi-value">${fmt(v.valor, 'length')}</div>
       <div class="kpi-foot">
-        <span class="muted size-sm">mín: ${fmt(v.requerido, 'length')}</span>
+        <span class="muted size-sm">req.: ${fmt(v.requerido, 'length')}</span>
         <span class="state ${ok ? 'ok' : 'err'}" style="margin-left:auto">
           <span class="dot"></span>${ok ? 'CUMPLE' : 'REVISAR'}
         </span>
@@ -683,6 +715,17 @@ function bindAll() {
     aplicarTipoMuro();
     actualizarVistaPrevia();
   });
+
+  // Norma: muestra las opciones CCP-14 (roca, γ_EQ) solo cuando aplica.
+  const _norma = $('#norma');
+  if (_norma) {
+    const aplicarNorma = () => {
+      const opts = $('#ccp14-opts');
+      if (opts) opts.style.display = (_norma.value === 'CCP14') ? '' : 'none';
+    };
+    _norma.addEventListener('change', aplicarNorma);
+    aplicarNorma();
+  }
 
   // Cuando cambia cualquier input numérico de geometría → re-dibuja el SVG.
   // Usamos 'input' (en tiempo real) con debounce para no sobrecargar.

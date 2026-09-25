@@ -203,6 +203,237 @@ _FORMULAS_CATALOGO: list[tuple[str, list[tuple[str, str]]]] = [
 
 
 # =============================================================================
+# Catálogo de fórmulas — CCP-14 (LRFD-AASHTO)
+# =============================================================================
+# La teoría de empujes y de capacidad portante es la misma; cambian el formato
+# de seguridad (factores γ y φ en vez de FS globales) y las referencias.
+_FORMULAS_CATALOGO_CCP14: list[tuple[str, list[tuple[str, str]]]] = [
+    ("Coeficientes de empuje y presiones laterales", [
+        ("K<sub>a</sub> Rankine (α = 0)",
+         "K<sub>a</sub> = tan²(45° − φ/2)"),
+        ("K<sub>a</sub> Rankine (relleno inclinado α)",
+         "K<sub>a</sub> = cos α · (cos α − √(cos²α − cos²φ)) / "
+         "(cos α + √(cos²α − cos²φ))"),
+        ("K<sub>p</sub> Rankine",
+         "K<sub>p</sub> = tan²(45° + φ/2)"),
+        ("Empuje activo / sobrecarga / pasivo",
+         "P<sub>a</sub> = ½·γ·K<sub>a</sub>·H² ; P<sub>q</sub> = q·K<sub>a</sub>·H ; "
+         "P<sub>p</sub> = ½·γ·K<sub>p</sub>·H² + 2·c'·√K<sub>p</sub>·H"),
+    ]),
+    ("Factores de carga γ — permanentes (CCP-14 Tabla 3.4.1-2)", [
+        ("DC — peso propio del concreto", "γ = 1.25 (máx) / 0.90 (mín)"),
+        ("EV — peso del suelo (muros y estribos)", "γ = 1.35 (máx) / 1.00 (mín)"),
+        ("EH — empuje horizontal activo del suelo", "γ = 1.50 (máx) / 0.90 (mín)"),
+        ("LS — sobrecarga viva (empuje lateral)", "γ = 1.75"),
+    ]),
+    ("Combinaciones de diseño (CCP-14 Tabla 3.4.1-1)", [
+        ("Resistencia I — capacidad portante (máx)",
+         "1.25·DC + 1.35·EV + 1.50·EH + 1.75·LS"),
+        ("Resistencia I — deslizamiento y excentricidad (mín)",
+         "0.90·DC + 1.00·EV + 1.50·EH + 1.75·LS"),
+        ("Evento Extremo I — sísmico",
+         "1.0·(DC + EV + EH) + γ<sub>EQ</sub>·LS + 1.0·EQ ; φ = 1.0"),
+    ]),
+    ("Verificaciones por estados límite (CCP-14 Art. 11.6.3)", [
+        ("Excentricidad — reemplaza el vuelco (Art. 11.6.3.3)",
+         "|e| = |B/2 − ΣM<sub>may</sub>/ΣV<sub>may</sub>| ≤ B/3  (suelo) ; ≤ 0.45·B (roca)"),
+        ("Deslizamiento (Art. 10.6.3.4)",
+         "CDR = [φ<sub>τ</sub>·(ΣV·tanφ + c'·B) + φ<sub>ep</sub>·P<sub>p</sub>] / ΣH ≥ 1.0"),
+        ("Factores de resistencia (Tabla 10.5.5.2.2-1)",
+         "φ<sub>τ</sub> = 0.80 (arena) / 0.85 (arcilla) ; φ<sub>ep</sub> = 0.50"),
+        ("Presión de contacto en suelo (Art. 11.6.3.2)",
+         "σ<sub>v</sub> = ΣV<sub>may</sub> / (B − 2e)  (uniforme sobre el ancho efectivo)"),
+        ("Capacidad portante (Art. 11.6.3.2 · Tabla 11.5.7-1)",
+         "CDR = φ<sub>b</sub>·q<sub>n</sub> / σ<sub>v</sub> ≥ 1.0 ; φ<sub>b</sub> = 0.55"),
+    ]),
+    ("Capacidad de carga del suelo (Meyerhof / Hansen / Vesic)", [
+        ("Ancho efectivo", "B' = B − 2·e"),
+        ("Capacidad nominal q<sub>n</sub>",
+         "q<sub>n</sub> = c'·N<sub>c</sub>·F<sub>cd</sub>·F<sub>ci</sub> "
+         "+ q·N<sub>q</sub>·F<sub>qd</sub>·F<sub>qi</sub> "
+         "+ ½·γ·B'·N<sub>γ</sub>·F<sub>γd</sub>·F<sub>γi</sub>"),
+        ("Factores N",
+         "N<sub>q</sub> = e<sup>π·tanφ</sup>·tan²(45°+φ/2) ; "
+         "N<sub>c</sub> = (N<sub>q</sub>−1)·cotφ ; "
+         "N<sub>γ</sub> = 2·(N<sub>q</sub>+1)·tanφ"),
+    ]),
+    ("Cargas sísmicas (CCP-14 Art. 11.6.5 y Mononobe-Okabe)", [
+        ("Empuje activo sísmico (Mononobe-Okabe)",
+         "P<sub>ae</sub> = ½·γ·K<sub>ae</sub>·H²·(1 − k<sub>v</sub>)"),
+        ("Incremento dinámico (Evento Extremo I, γ = 1.0)",
+         "ΔP<sub>ae</sub> = P<sub>ae</sub> − P<sub>a</sub>  (aplicado a 0.6·H)"),
+        ("Ángulo sísmico",
+         "θ = arctan( k<sub>h</sub> / (1 − k<sub>v</sub>) )"),
+    ]),
+    ("Diseño estructural (CCP-14 Sección 5 — AASHTO LRFD)", [
+        ("Resistencia requerida (flexión, φ<sub>f</sub> = 0.90)",
+         "R<sub>n</sub> = M<sub>u</sub> / (φ · b · d²)"),
+        ("Cuantía de refuerzo por flexión",
+         "ρ = (0.85·f'<sub>c</sub>/f<sub>y</sub>) · "
+         "(1 − √(1 − 2·R<sub>n</sub> / (0.85·f'<sub>c</sub>)))"),
+        ("Refuerzo mínimo (Art. 5.7.3.3.2)",
+         "φ·M<sub>n</sub> ≥ mín(1.33·M<sub>u</sub>, M<sub>cr</sub>)"),
+        ("Momento de fisuración",
+         "M<sub>cr</sub> = γ<sub>3</sub>·γ<sub>1</sub>·f<sub>r</sub>·S ; "
+         "γ<sub>1</sub>=1.6, γ<sub>3</sub>=0.67 ; f<sub>r</sub> = 0.62·√f'<sub>c</sub>"),
+        ("Cortante del concreto (φ<sub>v</sub> = 0.90, Art. 5.8.3)",
+         "V<sub>c</sub> = 0.083·β·√f'<sub>c</sub>·b<sub>v</sub>·d<sub>v</sub> ; "
+         "β = 2.0 ; d<sub>v</sub> = máx(0.9·d, 0.72·h)"),
+    ]),
+]
+
+
+def _config_norma(norma: str) -> dict:
+    """Textos y catálogo de fórmulas del reporte según la norma seleccionada."""
+    v = str(norma or "").upper().replace("-", "").replace(" ", "").replace("_", "")
+    if v in ("CCP14", "CCP", "AASHTO", "LRFD", "LRFDCCP14"):
+        return {
+            "id": "CCP14",
+            "subtitulo": "Conforme al Código Colombiano de Puentes CCP-14 "
+                         "(LRFD-AASHTO)",
+            "author": "Diseño de Muros CCP-14",
+            "footer": "Diseño de muro de contención — CCP-14 (LRFD)",
+            "catalogo": _FORMULAS_CATALOGO_CCP14,
+            "sismo_titulo": "Parámetros sísmicos (CCP-14 Art. 3.10)",
+            "sismo_diagrama": (
+                "Cargas sísmicas del estado de <b>Evento Extremo I</b> "
+                "(CCP-14 Art. 11.6.5, Mononobe-Okabe): empuje activo total "
+                "P<sub>ae</sub> aplicado a 0.6·H, incremento dinámico "
+                "ΔP<sub>ae</sub> = P<sub>ae</sub> − P<sub>a</sub> (factor de carga "
+                "γ<sub>EQ</sub> = 1.0), y fuerza de inercia del muro "
+                "F<sub>inercia</sub> = k<sub>h</sub>·W en el CG del concreto."),
+            "combos_titulo": "Combinaciones de carga CCP-14 (LRFD)",
+            "combos_sub": "Estados límite de Resistencia I y Evento Extremo I "
+                          "(Art. 3.4.1)",
+            "combos_gravedad": (
+                "En muros de gravedad las combinaciones LRFD se usan para "
+                "verificar la capacidad portante y el deslizamiento; el diseño "
+                "estructural por flexión no aplica."),
+            "verif_min_header": "Requerido",
+            "verif_base": (
+                "<b>Base normativa:</b> verificaciones geotécnicas por estados "
+                "límite (CCP-14 Secc. 10 y 11). Se reporta la relación "
+                "capacidad/demanda <b>CDR ≥ 1.0</b> en lugar del factor de "
+                "seguridad: la excentricidad reemplaza el vuelco "
+                "(|e| ≤ B/3 en suelo, Art. 11.6.3.3); deslizamiento con "
+                "φ<sub>τ</sub> y φ<sub>ep</sub> (Tabla 10.5.5.2.2-1); capacidad "
+                "portante con φ<sub>b</sub> = 0.55 (Tabla 11.5.7-1). Teoría de "
+                "capacidad: Meyerhof/Vesic."),
+            "estructural_titulo": "Diseño estructural (CCP-14 Sección 5)",
+            "estructural_gravedad_ref": "CCP-14 Sección 5",
+            "estructural_pasos_nota": (
+                "Para cada elemento se muestran los datos de entrada, los pasos "
+                "para obtener el momento último M<sub>u</sub> con factores LRFD "
+                "(EH·1.50, LS·1.75, DC·1.25, EV·1.35), y el refuerzo por flexión "
+                "y mínimo (CCP-14 Art. 5.7.3.3.2: "
+                "φ·M<sub>n</sub> ≥ mín(1.33·M<sub>u</sub>, M<sub>cr</sub>); "
+                "φ<sub>f</sub> = φ<sub>v</sub> = 0.90)."),
+            "momentos_nota": (
+                "Descomposición carga por carga del momento estabilizador y del "
+                "volcador respecto a la puntera (C), con <b>cargas características "
+                "(sin mayorar)</b>; sirve de referencia. En la CCP-14 el vuelco se "
+                "controla por el límite de excentricidad con cargas mayoradas "
+                "(sección de excentricidad)."),
+            "term": {
+                "volc_titulo": "Estabilidad al vuelco — relación capacidad/demanda",
+                "volc_formula_label": "CDR = e_lím / |e|  (Art. 11.6.3.3)",
+                "min_label": "CDR requerido",
+                "desliz_titulo": "Deslizamiento — relación capacidad/demanda (CDR)",
+                "desliz_intro": (
+                    "Cálculo LRFD de la relación capacidad/demanda "
+                    "CDR = R<sub>R</sub> / ΣH, con "
+                    "R<sub>R</sub> = φ<sub>τ</sub>·(ΣV·tanφ + c'·B) + "
+                    "φ<sub>ep</sub>·P<sub>p</sub> (CCP-14 Art. 10.6.3.4). "
+                    "Cargas <b>mayoradas</b> (Resistencia I / Evento Extremo I)."),
+                "desliz_fs_titulo": "Relación capacidad/demanda al deslizamiento",
+                "desliz_fs_label": "CDR = R_R / ΣH",
+                "capac_titulo": "Capacidad portante — relación capacidad/demanda (CDR)",
+                "capac_intro": (
+                    "Capacidad nominal q<sub>n</sub> (Meyerhof/Vesic) afectada por "
+                    "φ<sub>b</sub> = 0.55; demanda σ<sub>v</sub> = ΣV<sub>may</sub>/"
+                    "(B − 2e). CDR = φ<sub>b</sub>·q<sub>n</sub> / σ<sub>v</sub> "
+                    "(CCP-14 Art. 11.6.3.2). Cargas <b>mayoradas</b>."),
+                "capac_fs_titulo": "Relación capacidad/demanda por capacidad portante",
+                "capac_qu_label": "q_R = φ_b·q_n (capacidad mayorada)",
+                "capac_qmax_label": "σ_v (demanda mayorada)",
+                "capac_fs_label": "CDR = q_R / σ_v",
+                "excent_intro_zona": "el tercio medio (|e| ≤ B/3 en suelo; ≤ 0.45·B "
+                                     "en roca), Art. 11.6.3.3",
+                "excent_limite_label": "Límite (tercio medio, B/3 / sísmico)",
+                "excent_condicion": "|e| ≤ e_lím",
+            },
+        }
+    return {
+        "id": "NSR10",
+        "subtitulo": "Conforme a NSR-10 (Colombia)",
+        "author": "Diseño de Muros NSR-10",
+        "footer": "Diseño de muro de contención — NSR-10",
+        "catalogo": _FORMULAS_CATALOGO,
+        "sismo_titulo": "Parámetros sísmicos (NSR-10 A.2)",
+        "sismo_diagrama": (
+            "Cargas sísmicas según NSR-10 H.6: empuje activo total "
+            "P<sub>ae</sub> aplicado a 0.6·H, incremento dinámico "
+            "ΔP<sub>ae</sub> = P<sub>ae</sub> − P<sub>a</sub>, y fuerza de "
+            "inercia del muro F<sub>inercia</sub> = k<sub>h</sub>·W aplicada "
+            "en el centro de gravedad del concreto."),
+        "combos_titulo": "Combinaciones de carga NSR-10",
+        "combos_sub": "Estado Límite Último (ELU, B.2.4)",
+        "combos_gravedad": (
+            "En muros de gravedad solo se aplican combinaciones de servicio (ELS) "
+            "para verificar las presiones admisibles del suelo. Las combinaciones "
+            "últimas (ELU) no aplican porque estos muros no se diseñan por flexión."),
+        "verif_min_header": "Mínimo",
+        "verif_base": (
+            "<b>Base normativa:</b> verificaciones geotécnicas según el marco de la "
+            "NSR-10 Título H (geotecnia y cimentaciones), con los factores de "
+            "seguridad de la práctica: volcamiento FS ≥ 2.0, deslizamiento FS ≥ 1.5 "
+            "y capacidad portante FS ≥ 3.0 (q_u/q_máx); la resultante debe caer "
+            "dentro del núcleo central (|e| ≤ B/6). Fundamento teórico: Braja M. "
+            "Das, <i>Fundamentos de ingeniería de cimentaciones</i>, cap. 3 y 8."),
+        "estructural_titulo": "Diseño estructural (NSR-10 Título C)",
+        "estructural_gravedad_ref": "NSR-10 Título C.7",
+        "estructural_pasos_nota": (
+            "Para cada elemento se muestran los datos de entrada, los "
+            "pasos para obtener el momento último M_u, y los pasos para "
+            "obtener la cuantía de refuerzo ρ y el acero requerido A_s "
+            "(NSR-10 C.10.5.1 para la cuantía mínima y C.10.3 para la "
+            "cuantía máxima controlada por tracción)."),
+        "momentos_nota": (
+            "Descomposición carga por carga del momento estabilizador y "
+            "del momento volcador respecto a la puntera (C). Para cada fila: "
+            "momento = fuerza × brazo. Cálculo con cargas características "
+            "(sin mayorar)."),
+        "term": {
+            "volc_titulo": "Factor de seguridad al volcamiento",
+            "volc_formula_label": "FS_volc = ΣM_R / ΣM_o",
+            "min_label": "FS mínimo requerido",
+            "desliz_titulo": "Factor de Seguridad al Deslizamiento",
+            "desliz_intro": (
+                "Cálculo detallado de FS<sub>des</sub> = (ΣV·tan δ + B·c<sub>a</sub> "
+                "+ P<sub>p</sub> + P<sub>p,diente</sub>) / ΣH. Cargas sin mayorar; "
+                "la fricción y cohesión se reducen con los factores "
+                "k<sub>1</sub> y k<sub>2</sub>."),
+            "desliz_fs_titulo": "Factor de seguridad al deslizamiento",
+            "desliz_fs_label": "FS_des = Σ F_res / Σ F_act",
+            "capac_titulo": "Factor de Seguridad por Capacidad de Carga",
+            "capac_intro": (
+                "Cálculo detallado con la ecuación general (Meyerhof/Vesic): "
+                "q<sub>u</sub> = c'·N<sub>c</sub>·F<sub>cd</sub>·F<sub>ci</sub> + "
+                "q·N<sub>q</sub>·F<sub>qd</sub>·F<sub>qi</sub> + "
+                "½·γ·B'·N<sub>γ</sub>·F<sub>γd</sub>·F<sub>γi</sub>. "
+                "Cargas sin mayorar."),
+            "capac_fs_titulo": "Factor de seguridad por capacidad de carga",
+            "capac_qu_label": "q_u (capacidad última)",
+            "capac_qmax_label": "q_max (presión en puntera)",
+            "capac_fs_label": "FS_cap = q_u / q_max",
+            "excent_intro_zona": "el núcleo central (|e| ≤ B/6)",
+            "excent_limite_label": "Límite del núcleo central (B/6)",
+            "excent_condicion": "|e| ≤ B/6",
+        },
+    }
+
+
+# =============================================================================
 # Datos de la portada
 # =============================================================================
 @dataclass
@@ -334,8 +565,10 @@ def _estilo_tabla_resultado() -> TableStyle:
 # Pie y encabezado de página
 # =============================================================================
 class _PaginaPlantilla:
-    def __init__(self, datos: DatosProyecto) -> None:
+    def __init__(self, datos: DatosProyecto,
+                 footer_label: str = "Diseño de muro de contención — NSR-10") -> None:
         self.datos = datos
+        self.footer_label = footer_label
 
     def dibujar(self, canvas, doc) -> None:
         canvas.saveState()
@@ -356,8 +589,7 @@ class _PaginaPlantilla:
         # Pie
         canvas.setFont("Helvetica-Oblique", 8)
         canvas.setFillColor(COLOR_TEXTO_SUAVE)
-        canvas.drawString(2 * cm, 1.2 * cm,
-                          "Diseño de muro de contención — NSR-10")
+        canvas.drawString(2 * cm, 1.2 * cm, self.footer_label)
         canvas.drawRightString(LETTER[0] - 2 * cm, 1.2 * cm,
                                f"Página {doc.page} — {self.datos.fecha}")
         canvas.setStrokeColor(COLOR_VERDE_MEDIO)
@@ -395,6 +627,7 @@ def generar_pdf(
     imagen_esfuerzos_zapata_png: bytes | None = None,
     sistema_unidades: str = "MKS",
     tipo_muro: str = "voladizo",
+    norma: str = "NSR10",
 ) -> bytes:
     """Genera el reporte PDF y lo devuelve como bytes.
 
@@ -409,6 +642,8 @@ def generar_pdf(
     10.1.1, 10.1.2, ...).
     """
     es_gravedad = (tipo_muro == "gravedad")
+    cfg = _config_norma(norma)          # textos y catálogo según la norma
+    T = cfg["term"]                     # terminología (FS ↔ CDR, B/6 ↔ B/3, …)
     # Importación local para evitar ciclo de imports
     from retaining_wall.utils.formato import FormatoUnidades
     ufmt = FormatoUnidades(sistema_unidades)
@@ -428,13 +663,13 @@ def generar_pdf(
         leftMargin=2 * cm, rightMargin=2 * cm,
         topMargin=2.2 * cm, bottomMargin=2 * cm,
         title=f"Reporte - {datos.proyecto}",
-        author=datos.empresa or "Diseño de Muros NSR-10",
+        author=datos.empresa or cfg["author"],
     )
 
     frame = Frame(2 * cm, 2 * cm,
                   LETTER[0] - 4 * cm, LETTER[1] - 4.2 * cm,
                   id="normal")
-    plantilla = _PaginaPlantilla(datos)
+    plantilla = _PaginaPlantilla(datos, footer_label=cfg["footer"])
     doc.addPageTemplates([PageTemplate(id="main", frames=frame,
                                        onPage=plantilla.dibujar)])
 
@@ -443,7 +678,7 @@ def generar_pdf(
     # ============ PORTADA ============
     story.append(Spacer(1, 3 * cm))
     story.append(Paragraph("DISEÑO DE MURO DE CONTENCIÓN", TITULO_PORTADA))
-    story.append(Paragraph("Conforme a NSR-10 (Colombia)", SUBTITULO_PORTADA))
+    story.append(Paragraph(cfg["subtitulo"], SUBTITULO_PORTADA))
     story.append(Spacer(1, 2 * cm))
 
     filas_portada = [
@@ -503,7 +738,7 @@ def generar_pdf(
         ("LINEBELOW", (0, 0), (-1, -1), 0.25, COLOR_BORDE),
     ])
     idx = 0
-    for grupo_titulo, items in _FORMULAS_CATALOGO:
+    for grupo_titulo, items in cfg["catalogo"]:
         # Fila-header del grupo (fusionada)
         filas_form.append([Paragraph(f"<b>{grupo_titulo}</b>",
                                      ParagraphStyle(
@@ -580,7 +815,7 @@ def generar_pdf(
     # ============ PARÁMETROS SÍSMICOS ============
     if parametros_sismo:
         story.append(Paragraph(
-            f"{num.h1()} Parámetros sísmicos (NSR-10 A.2)", H1))
+            f"{num.h1()} {cfg['sismo_titulo']}", H1))
         filas = [["Parámetro", "Valor"]]
         for k, v in parametros_sismo.items():
             filas.append([k, str(v)])
@@ -623,13 +858,7 @@ def generar_pdf(
         story.append(PageBreak())
         story.append(Paragraph(
             f"<b>{num.h2()} Diagrama de cargas sísmicas (Mononobe-Okabe)</b>", H2))
-        story.append(Paragraph(
-            "Cargas sísmicas según NSR-10 H.6: empuje activo total "
-            "P<sub>ae</sub> aplicado a 0.6·H, incremento dinámico "
-            "ΔP<sub>ae</sub> = P<sub>ae</sub> − P<sub>a</sub>, y fuerza de "
-            "inercia del muro F<sub>inercia</sub> = k<sub>h</sub>·W aplicada "
-            "en el centro de gravedad del concreto.",
-            BODY))
+        story.append(Paragraph(cfg["sismo_diagrama"], BODY))
         img_stream_sis = io.BytesIO(imagen_sismo_png)
         img_sis = Image(img_stream_sis, width=16 * cm, height=10.3 * cm,
                         kind="proportional")
@@ -642,10 +871,10 @@ def generar_pdf(
     # Para muros de gravedad omitimos las ELU (no se diseña por flexión).
     # Las ELS se mantienen en ambos casos porque sirven para verificar
     # presiones admisibles del suelo.
-    story.append(Paragraph(f"{num.h1()} Combinaciones de carga NSR-10", H1))
+    story.append(Paragraph(f"{num.h1()} {cfg['combos_titulo']}", H1))
     if not es_gravedad and combinaciones_elu_rows:
         story.append(Paragraph(
-            f"<b>{num.h2()} Estado Límite Último (ELU, B.2.4)</b>", H2))
+            f"<b>{num.h2()} {cfg['combos_sub']}</b>", H2))
         header = ["Combinación",
                   f"V ({U_F})", f"H ({U_F})",
                   f"M_est ({U_M})", f"M_volc ({U_M})"]
@@ -655,11 +884,7 @@ def generar_pdf(
         story.append(t)
         story.append(Spacer(1, 0.4 * cm))
     elif es_gravedad:
-        story.append(Paragraph(
-            "En muros de gravedad solo se aplican combinaciones de servicio (ELS) "
-            "para verificar las presiones admisibles del suelo. Las combinaciones "
-            "últimas (ELU) no aplican porque estos muros no se diseñan por flexión.",
-            BODY))
+        story.append(Paragraph(cfg["combos_gravedad"], BODY))
 
     if combinaciones_els_rows:
         header = ["Combinación",
@@ -678,11 +903,8 @@ def generar_pdf(
         story.append(Paragraph(
             f"{num.h1()} Cálculo de momentos respecto a la puntera (C)", H1))
         story.append(Paragraph(
-            "Descomposición carga por carga del momento estabilizador y "
-            "del momento volcador. Para cada fila: momento = fuerza × brazo. "
-            f"Fuerzas en {U_F}, brazos en m, momentos en {U_M}. "
-            "Cálculo realizado con cargas características (sin mayorar).",
-            BODY))
+            cfg["momentos_nota"] + f" Fuerzas en {U_F}, brazos en m, "
+            f"momentos en {U_M}.", BODY))
 
         tot = totales_momentos or {}
         header_mom = ["#", "Elemento / carga", "Cat.", "Tipo",
@@ -724,43 +946,48 @@ def generar_pdf(
         story.append(t)
         story.append(Spacer(1, 0.4 * cm))
 
-        # FS al volcamiento
-        story.append(Paragraph(
-            f"<b>{num.h2()} Factor de seguridad al volcamiento</b>", H2))
-        FS = tot.get("FS_volcamiento")
-        FS_req = tot.get("FS_requerido", 2.0)
-        FS_txt = ("∞" if FS is None
-                  else (f"{FS:.3f}" if isinstance(FS, (int, float)) else str(FS)))
-        estado_fs = ("CUMPLE" if (FS is None or
-                     (isinstance(FS, (int, float)) and FS >= FS_req))
-                     else "NO CUMPLE")
-        filas_fs = [
-            ["Concepto", "Valor"],
-            [f"ΣM_R ({U_M})", f"{tot.get('SMR', 0):.2f}"],
-            [f"ΣM_o ({U_M})", f"{tot.get('SMo', 0):.2f}"],
-            ["FS_volc = ΣM_R / ΣM_o", FS_txt],
-            ["FS mínimo requerido", f"{FS_req:.2f}"],
-            ["Estado", estado_fs],
-        ]
-        t = Table(filas_fs, colWidths=[9 * cm, 7 * cm])
-        estilo = _estilo_tabla_datos()
-        color = COLOR_OK_BG if estado_fs == "CUMPLE" else COLOR_ERR_BG
-        estilo.add("BACKGROUND", (-1, -1), (-1, -1), color)
-        estilo.add("FONTNAME", (-1, -1), (-1, -1), "Helvetica-Bold")
-        t.setStyle(estilo)
-        story.append(t)
+        # FS al volcamiento — solo en NSR-10 (esfuerzos admisibles).
+        # En CCP-14 el vuelco se controla por el límite de excentricidad con
+        # cargas mayoradas (ver la sección de excentricidad).
+        if cfg["id"] == "CCP14":
+            story.append(Paragraph(
+                "<b>Nota (CCP-14):</b> el vuelco no se verifica con un factor de "
+                "seguridad global. La estabilidad al vuelco se controla mediante "
+                "el límite de excentricidad de la resultante con cargas mayoradas "
+                "(|e| ≤ B/3 en suelo), presentado en la sección de excentricidad "
+                "(Art. 11.6.3.3).", BODY))
+        else:
+            story.append(Paragraph(
+                f"<b>{num.h2()} {T['volc_titulo']}</b>", H2))
+            FS = tot.get("FS_volcamiento")
+            FS_req = tot.get("FS_requerido", 2.0)
+            FS_txt = ("∞" if FS is None
+                      else (f"{FS:.3f}" if isinstance(FS, (int, float)) else str(FS)))
+            estado_fs = ("CUMPLE" if (FS is None or
+                         (isinstance(FS, (int, float)) and FS >= FS_req))
+                         else "NO CUMPLE")
+            filas_fs = [
+                ["Concepto", "Valor"],
+                [f"ΣM_R ({U_M})", f"{tot.get('SMR', 0):.2f}"],
+                [f"ΣM_o ({U_M})", f"{tot.get('SMo', 0):.2f}"],
+                [T["volc_formula_label"], FS_txt],
+                [T["min_label"], f"{FS_req:.2f}"],
+                ["Estado", estado_fs],
+            ]
+            t = Table(filas_fs, colWidths=[9 * cm, 7 * cm])
+            estilo = _estilo_tabla_datos()
+            color = COLOR_OK_BG if estado_fs == "CUMPLE" else COLOR_ERR_BG
+            estilo.add("BACKGROUND", (-1, -1), (-1, -1), color)
+            estilo.add("FONTNAME", (-1, -1), (-1, -1), "Helvetica-Bold")
+            t.setStyle(estilo)
+            story.append(t)
         story.append(PageBreak())
 
     # ============ DESLIZAMIENTO — CÁLCULO DETALLADO ============
     if deslizamiento_detalle:
         story.append(Paragraph(
-            f"{num.h1()} Factor de Seguridad al Deslizamiento", H1))
-        story.append(Paragraph(
-            "Cálculo detallado de FS<sub>des</sub> = (ΣV·tan δ + B·c<sub>a</sub> + "
-            "P<sub>p</sub> + P<sub>p,diente</sub>) / ΣH. "
-            "Cargas sin mayorar; la fricción y cohesión se reducen con los "
-            "factores k<sub>1</sub> y k<sub>2</sub>.",
-            BODY))
+            f"{num.h1()} {T['desliz_titulo']}", H1))
+        story.append(Paragraph(T["desliz_intro"], BODY))
 
         # Parámetros
         story.append(Paragraph(
@@ -812,9 +1039,9 @@ def generar_pdf(
         story.append(t)
         story.append(Spacer(1, 0.3 * cm))
 
-        # Factor de seguridad
+        # Factor de seguridad / relación capacidad-demanda
         story.append(Paragraph(
-            f"<b>{num.h2()} Factor de seguridad al deslizamiento</b>", H2))
+            f"<b>{num.h2()} {T['desliz_fs_titulo']}</b>", H2))
         tot = deslizamiento_detalle["totales"]
         FS_val = tot["FS"]
         FS_min = tot["FS_min"]
@@ -827,8 +1054,8 @@ def generar_pdf(
             ["Concepto", "Valor"],
             ["Σ F_resistente", f"{F_res:.2f} {U_F}"],
             ["Σ F_actuante",   f"{F_act:.2f} {U_F}"],
-            ["FS_des = Σ F_res / Σ F_act", FS_txt],
-            ["FS mínimo requerido", f"{FS_min:.2f}"],
+            [T["desliz_fs_label"], FS_txt],
+            [T["min_label"], f"{FS_min:.2f}"],
             ["Estado", estado],
         ]
         t = Table(filas_fs, colWidths=[9 * cm, 7 * cm])
@@ -843,14 +1070,8 @@ def generar_pdf(
     # ============ CAPACIDAD DE CARGA — CÁLCULO DETALLADO ============
     if capacidad_carga_detalle:
         story.append(Paragraph(
-            f"{num.h1()} Factor de Seguridad por Capacidad de Carga", H1))
-        story.append(Paragraph(
-            "Cálculo detallado con la ecuación general (Meyerhof/Vesic): "
-            "q<sub>u</sub> = c'·N<sub>c</sub>·F<sub>cd</sub>·F<sub>ci</sub> + "
-            "q·N<sub>q</sub>·F<sub>qd</sub>·F<sub>qi</sub> + "
-            "½·γ·B'·N<sub>γ</sub>·F<sub>γd</sub>·F<sub>γi</sub>. "
-            "Cargas sin mayorar.",
-            BODY))
+            f"{num.h1()} {T['capac_titulo']}", H1))
+        story.append(Paragraph(T["capac_intro"], BODY))
 
         # Parámetros
         story.append(Paragraph(
@@ -923,7 +1144,7 @@ def generar_pdf(
 
         # FS
         story.append(Paragraph(
-            f"<b>{num.h2()} Factor de seguridad por capacidad de carga</b>", H2))
+            f"<b>{num.h2()} {T['capac_fs_titulo']}</b>", H2))
         tot_cc = capacidad_carga_detalle["totales"]
         FS_cc = tot_cc["FS"]
         FS_cc_min = tot_cc["FS_min"]
@@ -933,10 +1154,10 @@ def generar_pdf(
                     else "NO CUMPLE"
         filas_fs = [
             ["Concepto", "Valor"],
-            ["q_u (capacidad última)",     f"{tot_cc['qu']:.2f} {U_Q}"],
-            ["q_max (presión en puntera)", f"{tot_cc['q_max']:.2f} {U_Q}"],
-            ["FS_cap = q_u / q_max", FS_txt],
-            ["FS mínimo requerido", f"{FS_cc_min:.2f}"],
+            [T["capac_qu_label"],   f"{tot_cc['qu']:.2f} {U_Q}"],
+            [T["capac_qmax_label"], f"{tot_cc['q_max']:.2f} {U_Q}"],
+            [T["capac_fs_label"], FS_txt],
+            [T["min_label"], f"{FS_cc_min:.2f}"],
             ["Estado", estado_cc],
         ]
         t = Table(filas_fs, colWidths=[9 * cm, 7 * cm])
@@ -955,9 +1176,8 @@ def generar_pdf(
         story.append(Paragraph(
             "Descomposición paso a paso del cálculo de la excentricidad "
             "<b>e</b> de la resultante vertical respecto al eje de la "
-            "base, y verificación de que cae dentro del núcleo central "
-            "(|e| ≤ B/6) para evitar tensiones en el talón. Cargas "
-            "características (sin mayorar).",
+            f"base, y verificación de que cae en {T['excent_intro_zona']} "
+            "para evitar tensiones en el talón / pérdida de contacto en la base.",
             BODY))
 
         # Parámetros
@@ -978,6 +1198,10 @@ def generar_pdf(
         # Pasos del cálculo
         story.append(Paragraph(
             f"<b>{num.h2()} Pasos del cálculo</b>", H2))
+        _pc = ParagraphStyle("excConcept", parent=_styles["Normal"],
+                             fontSize=8.5, leading=10.2, textColor=COLOR_TEXTO)
+        _pf = ParagraphStyle("excForm", parent=_styles["Normal"],
+                             fontSize=8.2, leading=10.0, textColor=COLOR_TEXTO_SUAVE)
         header = ["#", "Concepto", "Fórmula", "Cálculo", "Valor"]
         filas = [header]
         for i, paso in enumerate(excentricidad_detalle.get("pasos", []),
@@ -985,13 +1209,17 @@ def generar_pdf(
             val = paso["valor"]
             unidad = paso.get("unidad", "")
             filas.append([
-                str(i), paso["nombre"], paso["formula"],
-                paso.get("detalle", ""),
+                str(i),
+                Paragraph(paso["nombre"], _pc),
+                Paragraph(paso["formula"], _pf),
+                Paragraph(paso.get("detalle", ""), _pf),
                 f"{val:.2f} {unidad}" if isinstance(val, (int, float))
                 else f"{val} {unidad}",
             ])
         t = Table(filas, colWidths=[0.8*cm, 4.9*cm, 3.5*cm, 3.5*cm, 3.3*cm])
-        t.setStyle(_estilo_tabla_resultado())
+        estilo_exc = _estilo_tabla_resultado()
+        estilo_exc.add("VALIGN", (0, 1), (-1, -1), "MIDDLE")
+        t.setStyle(estilo_exc)
         story.append(t)
         story.append(Spacer(1, 0.3 * cm))
 
@@ -1004,9 +1232,8 @@ def generar_pdf(
             ["Concepto", "Valor"],
             ["Excentricidad calculada |e|", f"{tot_e['abs_e']:.2f} m"],
             ["Dirección de la excentricidad", tot_e.get("lado", "—")],
-            ["Límite del núcleo central (B/6)",
-             f"{tot_e['limite']:.2f} m"],
-            ["Condición", "|e| ≤ B/6"],
+            [T["excent_limite_label"], f"{tot_e['limite']:.2f} m"],
+            ["Condición", T["excent_condicion"]],
             ["Estado", estado_e],
         ]
         t = Table(filas_fs, colWidths=[9 * cm, 7 * cm])
@@ -1025,10 +1252,13 @@ def generar_pdf(
         "Tabla resumen de las cuatro verificaciones geotécnicas. El cálculo "
         "detallado de cada una de ellas se presenta en las secciones "
         "anteriores (momentos, deslizamiento y capacidad de carga). "
-        "Todas las verificaciones se realizan con cargas características "
-        "(sin mayorar).",
+        + ("Se reporta la relación capacidad/demanda (CDR ≥ 1.0) con cargas "
+           "mayoradas por los factores de la CCP-14."
+           if cfg["id"] == "CCP14"
+           else "Todas las verificaciones se realizan con cargas características "
+                "(sin mayorar)."),
         BODY))
-    header = ["Verificación", "Calculado", "Mínimo", "Unid.", "Estado"]
+    header = ["Verificación", "Calculado", cfg["verif_min_header"], "Unid.", "Estado"]
     filas = [header] + verificaciones_rows
     t = Table(filas, colWidths=[6.5 * cm, 2.8 * cm, 2.5 * cm, 1.5 * cm, 2.7 * cm])
     estilo = _estilo_tabla_resultado()
@@ -1043,14 +1273,7 @@ def generar_pdf(
     t.setStyle(estilo)
     story.append(t)
     story.append(Spacer(1, 0.25 * cm))
-    story.append(Paragraph(
-        "<b>Base normativa:</b> verificaciones geotécnicas según el marco de la "
-        "NSR-10 Título H (geotecnia y cimentaciones), con los factores de "
-        "seguridad de la práctica: volcamiento FS ≥ 2.0, deslizamiento FS ≥ 1.5 "
-        "y capacidad portante FS ≥ 3.0 (q_u/q_máx); la resultante debe caer "
-        "dentro del núcleo central (|e| ≤ B/6). Fundamento teórico: Braja M. "
-        "Das, <i>Fundamentos de ingeniería de cimentaciones</i>, cap. 3 y 8.",
-        BODY))
+    story.append(Paragraph(cfg["verif_base"], BODY))
     story.append(Spacer(1, 0.4 * cm))
 
     # Presiones
@@ -1080,13 +1303,13 @@ def generar_pdf(
             "carga del suelo se cumplen, el muro es estructuralmente "
             "adecuado. Para refuerzo por temperatura/contracción y "
             "consideraciones constructivas (juntas, drenaje, lloraderos) "
-            "consulte la NSR-10 Título C.7 y las recomendaciones de Das "
-            "(§8.10).",
+            f"consulte la {cfg['estructural_gravedad_ref']} y las recomendaciones "
+            "de Das (§8.10).",
             BODY))
         story.append(Spacer(1, 0.6 * cm))
     else:
         story.append(Paragraph(
-            f"{num.h1()} Diseño estructural (NSR-10 Título C)", H1))
+            f"{num.h1()} {cfg['estructural_titulo']}", H1))
         story.append(Paragraph(
             "Refuerzo longitudinal por flexión y verificación a cortante para "
             "cada elemento, por metro lineal de muro. Se diseñan tres elementos: "
@@ -1121,13 +1344,7 @@ def generar_pdf(
         story.append(PageBreak())
         story.append(Paragraph(
             f"<b>{num.h2()} Paso a paso del cálculo estructural</b>", H2))
-        story.append(Paragraph(
-            "Para cada elemento se muestran los datos de entrada, los "
-            "pasos para obtener el momento último M_u, y los pasos para "
-            "obtener la cuantía de refuerzo ρ y el acero requerido A_s "
-            "(NSR-10 C.10.5.1 para la cuantía mínima y C.10.3 para la "
-            "cuantía máxima controlada por tracción).",
-            BODY))
+        story.append(Paragraph(cfg["estructural_pasos_nota"], BODY))
 
         # Estilo compacto común a las tablas de pasos
         _cell_concept = ParagraphStyle(

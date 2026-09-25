@@ -18,24 +18,70 @@ function zReadMag(el) {
 }
 
 function zapRecolectar() {
+  const chk = (id, dv) => { const e = $('#' + id); return e ? e.checked : dv; };
+  const numv = (id, dv) => { const e = $('#' + id); const v = e ? parseFloat(e.value) : NaN; return isNaN(v) ? dv : v; };
   return {
+    tipo: ($('#zap_tipo') && $('#zap_tipo').value) || 'aislada',
+    forma: ($('#zap_forma') && $('#zap_forma').value) || 'cuadrada',
+    // Columna 1 (sirve también como la única en aislada)
     c1: zReadMag($('#zap_c1')), c2: zReadMag($('#zap_c2')),
     P_servicio: zReadMag($('#zap_P')) || 0,
     M_servicio: zReadMag($('#zap_M')) || 0,
+    My_servicio: zReadMag($('#zap_My')) || 0,
     Pu: zReadMag($('#zap_Pu')) || 0,
-    factor_carga: parseFloat($('#zap_fcarga').value) || 1.5,
+    factor_carga: numv('zap_fcarga', 1.5),
     q_adm: zReadMag($('#zap_qadm')) || 0,
     Df: zReadMag($('#zap_Df')) || 0,
     gamma_suelo: zReadMag($('#zap_gs')) || 18,
     gamma_concreto: zReadMag($('#zap_gc')) || 24,
     posicion: $('#zap_pos').value,
     fc: zReadMag($('#zap_fc')), fy: zReadMag($('#zap_fy')),
-    db: (parseFloat($('#zap_db').value) || 19.05) / 1000.0,   // mm → m
+    db: (numv('zap_db', 19.05)) / 1000.0,   // mm → m
     recubrimiento: zReadMag($('#zap_rec')),
     B: zReadMag($('#zap_B')) || 0,
     L: zReadMag($('#zap_L')) || 0,
     h: zReadMag($('#zap_h')) || 0,
+    relacion_LB: numv('zap_relLB', 1.0),
+    // Combinada
+    c1a: zReadMag($('#zap_c1')), c2a: zReadMag($('#zap_c2')),
+    P1_servicio: zReadMag($('#zap_P')) || 0,
+    c1b: zReadMag($('#zap_c1b')), c2b: zReadMag($('#zap_c2b')),
+    P2_servicio: zReadMag($('#zap_P2')) || 0,
+    separacion: zReadMag($('#zap_sep')) || 0,
+    medianeria_izquierda: chk('zap_mediz', true),
+    // Esquinera
+    viga_centradora: chk('zap_viga', true),
+    // Triangular
+    base: zReadMag($('#zap_base')) || 0,
+    altura: zReadMag($('#zap_altura')) || 0,
   };
+}
+
+/* Muestra/oculta los campos según el tipo y la forma de zapata. */
+function zapAplicarTipo() {
+  const t = ($('#zap_tipo') && $('#zap_tipo').value) || 'aislada';
+  const forma = ($('#zap_forma') && $('#zap_forma').value) || 'cuadrada';
+  document.querySelectorAll('.ztipo-cond').forEach(el => {
+    const tipos = (el.getAttribute('data-ztipo') || '').split(/\s+/).filter(Boolean);
+    el.style.display = tipos.includes(t) ? '' : 'none';
+  });
+  // Campos que dependen de la FORMA (solo aplican a la aislada).
+  document.querySelectorAll('.zforma-cond').forEach(el => {
+    const fs = (el.getAttribute('data-zforma') || '').split(/\s+/).filter(Boolean);
+    el.style.display = (t === 'aislada' && fs.includes(forma)) ? '' : 'none';
+  });
+  const t1 = $('#zap-col1-title');
+  if (t1) t1.textContent = (t === 'combinada') ? 'Columna 1 y cargas' : 'Columna y cargas';
+  const hint = $('#zap-tipo-hint');
+  if (hint) {
+    const H = {
+      aislada: 'Una columna. Elige forma (cuadrada/rectangular); es concéntrica si M=0, o excéntrica con Mₓ/M_y.',
+      combinada: 'Dos columnas sobre una zapata rectangular que trabaja como viga longitudinal.',
+      conectada: 'Columna de medianería/esquina unida por una viga de enlace (centradora) a una zapata interior.',
+      triangular: 'Planta triangular con la columna en el baricentro (caso especial).',
+    };
+    hint.textContent = H[t] || '';
+  }
 }
 
 async function zapCalcular() {
@@ -66,7 +112,81 @@ const _ztf = kN => fromSI(kN, 'force');       // kN → tonf
 const _ztp = kPa => fromSI(kPa, 'pressure');  // kPa → tonf/m²
 const _ztm = kNm => fromSI(kNm, 'moment');    // kN·m → tonf·m
 
+const _zset = (id, v) => { const el = $('#' + id); if (el) el.textContent = v; };
+const _zok = (b) => b ? '<span style="color:var(--green-300)">cumple</span>'
+                      : '<span style="color:var(--status-err-tx)">no cumple</span>';
+const _zavisos = (res) => (res.avisos && res.avisos.length)
+  ? `<div class="hint" style="border-color:var(--status-warn-bd);color:var(--status-warn-tx)">⚠ ${res.avisos.join('<br>⚠ ')}</div>` : '';
+
 function zapRender(res) {
+  const t = res.tipo || 'aislada';
+  if (t === 'combinada') return zapRenderCombinada(res);
+  if (t === 'triangular') return zapRenderTriangular(res);
+  return zapRenderAislada(res);
+}
+
+function zapRenderCombinada(res) {
+  const g = res.geometria, geo = res.geotecnico, e = res.estructural;
+  const asMax = Math.max(e.flexion_long_inferior.As_cm2, e.flexion_long_superior.As_cm2,
+                         e.flexion_transversal_col1.As_cm2, e.flexion_transversal_col2.As_cm2);
+  _zset('zk-bl', `${g.B_m}×${g.L_m}`);
+  _zset('zk-h', g.h_m); _zset('zk-d', g.d_m);
+  _zset('zk-q', _ztp(geo.q_max_kPa).toFixed(1));
+  _zset('zk-punz', Math.max(e.punzonamiento_col1.ratio || 0, e.punzonamiento_col2.ratio || 0));
+  _zset('zk-as', asMax.toFixed(1));
+  $('#zap-detalle').innerHTML = `
+    <div class="pil-line"><b>Zapata combinada</b> · viga longitudinal ${g.L_m}×${g.B_m} m ·
+      columnas en x=${g.x1_col_m} y x=${g.x2_col_m} m (sep. ${g.separacion_m} m)</div>
+    <div class="pil-line"><b>Geotecnia:</b> P total ${_ztf(geo.P_total_servicio_kN).toFixed(1)} tonf ·
+      excentricidad ${geo.excentricidad_m} m · q<sub>máx</sub> ${_ztp(geo.q_max_kPa).toFixed(1)} /
+      q<sub>adm</sub> ${_ztp(geo.q_adm_kPa).toFixed(1)} tonf/m² → ${_zok(geo.cumple)} (D/C=${geo.ratio})</div>
+    <div class="pil-line"><b>Viga:</b> M⁺=${_ztm(e.M_pos_kNm).toFixed(1)} (x=${e.x_M_pos_m} m, acero inferior) ·
+      M⁻=${_ztm(e.M_neg_kNm).toFixed(1)} tonf·m (x=${e.x_M_neg_m} m, acero superior) ·
+      V<sub>máx</sub>=${_ztf(e.V_max_kN).toFixed(1)} tonf → ${_zok(e.cumple_v_long)}</div>
+    <div class="pil-line"><b>Punzonamiento:</b> col.1 D/C=${e.punzonamiento_col1.ratio} ${_zok(e.punzonamiento_col1.cumple)} ·
+      col.2 D/C=${e.punzonamiento_col2.ratio} ${_zok(e.punzonamiento_col2.cumple)}</div>
+    <table class="pil-table" style="margin-top:8px">
+      <thead><tr><th>Refuerzo</th><th style="text-align:right">Mu (tonf·m)</th><th style="text-align:right">As (cm²)</th><th style="text-align:right">Barras</th></tr></thead>
+      <tbody>
+        ${_zfila(e.flexion_long_inferior, 'Longitudinal inferior (M⁺)')}
+        ${_zfila(e.flexion_long_superior, 'Longitudinal superior (M⁻)')}
+        ${_zfila(e.flexion_transversal_col1, 'Transversal col. 1')}
+        ${_zfila(e.flexion_transversal_col2, 'Transversal col. 2')}
+      </tbody>
+    </table>
+    ${_zavisos(res)}`;
+}
+
+function zapRenderTriangular(res) {
+  const g = res.geometria, geo = res.geotecnico, e = res.estructural;
+  _zset('zk-bl', `${g.base_m}×${g.altura_m}`);
+  _zset('zk-h', g.h_m); _zset('zk-d', g.d_m);
+  _zset('zk-q', _ztp(geo.q_max_kPa).toFixed(1));
+  _zset('zk-punz', e.punzonamiento.ratio);
+  _zset('zk-as', e.flexion.As_cm2.toFixed ? e.flexion.As_cm2.toFixed(1) : e.flexion.As_cm2);
+  $('#zap-detalle').innerHTML = `
+    <div class="pil-line"><b>Zapata triangular</b> · base ${g.base_m} m × altura ${g.altura_m} m ·
+      A=${g.area_m2} m² (lado eq. ${g.lado_equivalente_m} m)</div>
+    <div class="pil-line"><b>Geotecnia:</b> P total ${_ztf(geo.P_total_servicio_kN).toFixed(1)} tonf ·
+      q<sub>unif</sub> ${_ztp(geo.q_uniforme_kPa).toFixed(1)} / q<sub>adm</sub> ${_ztp(geo.q_adm_kPa).toFixed(1)} tonf/m²
+      → ${_zok(geo.cumple)} (D/C=${geo.ratio})</div>
+    <div class="pil-line"><b>Punzonamiento:</b> D/C=${e.punzonamiento.ratio} ${_zok(e.punzonamiento.cumple)} ·
+      <b>Cortante 1 vía:</b> D/C=${e.una_via.ratio} ${_zok(e.una_via.cumple)}</div>
+    <table class="pil-table" style="margin-top:8px">
+      <thead><tr><th>Flexión (aprox. eq.)</th><th style="text-align:right">Mu</th><th style="text-align:right">As (cm²)</th><th style="text-align:right">Barras</th></tr></thead>
+      <tbody>${_zfila(e.flexion, 'Ambas direcciones')}</tbody>
+    </table>
+    ${_zavisos(res)}`;
+}
+
+function _zfila(f, dir) {
+  return `<tr><td>${dir}</td>
+    <td style="text-align:right">${_ztm(f.Mu_kNm).toFixed(2)}</td>
+    <td style="text-align:right">${f.As_cm2}${f.gobierna_minimo ? ' <span class="muted">(mín)</span>' : ''}</td>
+    <td style="text-align:right">${f.n_barras} Ø${f.db_mm} @ ${f.sep_cm} cm</td></tr>`;
+}
+
+function zapRenderAislada(res) {
   const g = res.geometria, geo = res.geotecnico, e = res.estructural;
   const set = (id, v) => { const el = $('#' + id); if (el) el.textContent = v; };
   const asMax = Math.max(e.flexion_L.As_cm2, e.flexion_B.As_cm2);
@@ -105,6 +225,61 @@ function zapRender(res) {
 function zapDibujar(res) {
   const cont = $('#zap-preview');
   if (!cont) return;
+  const t = res.tipo || 'aislada';
+  if (t === 'combinada') return zapDibujarCombinada(res, cont);
+  if (t === 'triangular') return zapDibujarTriangular(res, cont);
+  return zapDibujarAislada(res, cont);
+}
+
+const _ZCOL = { bg: '#0d1c16', concrete: '#6f7a83', col: '#9aa6ae', soil: '#caa86a',
+                txt: '#eaf2ee', sub: '#9fc0b2', steel: '#e07a3a', edge: '#1f262c', arrow: '#e7c46b' };
+
+function zapDibujarCombinada(res, cont) {
+  const g = res.geometria, e = res.estructural, C = _ZCOL;
+  const W = 460, H = 300, m = 40;
+  const s = (W - 2 * m) / g.L_m;
+  const bl = g.L_m * s, bw = Math.min(120, g.B_m * s);
+  const x0 = m, y0 = 90;
+  let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="100%" height="100%"
+    style="display:block;background:${C.bg};border-radius:10px;font-family:'Inter',system-ui,sans-serif">
+    <text x="${W/2}" y="24" font-size="12" font-weight="700" fill="${C.txt}" text-anchor="middle">ZAPATA COMBINADA — planta</text>`;
+  svg += `<rect x="${x0}" y="${y0}" width="${bl.toFixed(1)}" height="${bw.toFixed(1)}" fill="${C.concrete}" fill-opacity="0.30" stroke="${C.concrete}" stroke-width="1.6"/>`;
+  [g.x1_col_m, g.x2_col_m].forEach((xc, i) => {
+    const cx = x0 + xc * s, cw = 14;
+    svg += `<rect x="${(cx - cw/2).toFixed(1)}" y="${(y0 + bw/2 - cw/2).toFixed(1)}" width="${cw}" height="${cw}" fill="${C.col}" stroke="${C.edge}"/>`;
+    svg += `<text x="${cx.toFixed(1)}" y="${(y0 - 6).toFixed(1)}" font-size="10" fill="${C.txt}" text-anchor="middle">C${i+1}</text>`;
+  });
+  // presión uniforme (flechas)
+  for (let i = 0; i <= 10; i++) { const xx = x0 + bl * i / 10;
+    svg += `<line x1="${xx.toFixed(1)}" y1="${(y0+bw+26).toFixed(1)}" x2="${xx.toFixed(1)}" y2="${(y0+bw+4).toFixed(1)}" stroke="${C.arrow}" stroke-width="1.1"/>`; }
+  svg += `<text x="${(x0+bl/2).toFixed(1)}" y="${(y0+bw+42).toFixed(1)}" font-size="10" fill="${C.arrow}" text-anchor="middle">q_u = ${_ztp(e.qu_kPa).toFixed(1)} tonf/m²</text>`;
+  svg += `<text x="${(x0+bl/2).toFixed(1)}" y="${(y0+bw+62).toFixed(1)}" font-size="11" fill="${C.txt}" text-anchor="middle">L = ${g.L_m} m · B = ${g.B_m} m · h = ${g.h_m} m</text>`;
+  svg += `</svg>`;
+  cont.innerHTML = svg;
+}
+
+function zapDibujarTriangular(res, cont) {
+  const g = res.geometria, e = res.estructural, C = _ZCOL;
+  const W = 460, H = 300, m = 50;
+  const s = Math.min((W - 2*m) / g.base_m, (H - 2*m - 30) / g.altura_m) * 0.9;
+  const bw = g.base_m * s, ht = g.altura_m * s;
+  const cx = W/2, by = H - m;
+  const p1 = [cx - bw/2, by], p2 = [cx + bw/2, by], p3 = [cx, by - ht];
+  const gx = (p1[0]+p2[0]+p3[0])/3, gy = (p1[1]+p2[1]+p3[1])/3;
+  let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="100%" height="100%"
+    style="display:block;background:${C.bg};border-radius:10px;font-family:'Inter',system-ui,sans-serif">
+    <text x="${W/2}" y="24" font-size="12" font-weight="700" fill="${C.txt}" text-anchor="middle">ZAPATA TRIANGULAR — planta</text>`;
+  svg += `<polygon points="${p1[0].toFixed(1)},${p1[1].toFixed(1)} ${p2[0].toFixed(1)},${p2[1].toFixed(1)} ${p3[0].toFixed(1)},${p3[1].toFixed(1)}" fill="${C.concrete}" fill-opacity="0.30" stroke="${C.concrete}" stroke-width="1.6"/>`;
+  svg += `<rect x="${(gx-7).toFixed(1)}" y="${(gy-7).toFixed(1)}" width="14" height="14" fill="${C.col}" stroke="${C.edge}"/>`;
+  svg += `<text x="${gx.toFixed(1)}" y="${(gy-12).toFixed(1)}" font-size="10" fill="${C.txt}" text-anchor="middle">columna (baricentro)</text>`;
+  svg += `<text x="${cx.toFixed(1)}" y="${(by+22).toFixed(1)}" font-size="11" fill="${C.txt}" text-anchor="middle">base = ${g.base_m} m · altura = ${g.altura_m} m · h = ${g.h_m} m</text>`;
+  svg += `<text x="${cx.toFixed(1)}" y="${(by+40).toFixed(1)}" font-size="10" fill="${C.arrow}" text-anchor="middle">q_u = ${_ztp(e.qu_kPa).toFixed(1)} tonf/m² (uniforme)</text>`;
+  svg += `</svg>`;
+  cont.innerHTML = svg;
+}
+
+/* ---------- Esquema aislada: planta + sección (SVG) ---------- */
+function zapDibujarAislada(res, cont) {
   const g = res.geometria, e = res.estructural;
   const B = g.B_m, L = g.L_m, h = g.h_m, c1 = g.c1_m, c2 = g.c2_m;
 
@@ -193,7 +368,10 @@ function zapDibujar(res) {
 function zapMostrar() {
   const cont = $('#zap-preview');
   if (!cont || !_zapLast) return;
-  if (_vista3D_zap && window.CimXFooting3D && CimXFooting3D.isAvailable()) {
+  // El visor 3D solo aplica a la zapata aislada (rectangular con una columna).
+  const g0 = _zapLast.geometria || {};
+  const soporta3D = (g0.c1_m !== undefined && g0.B_m !== undefined);
+  if (_vista3D_zap && soporta3D && window.CimXFooting3D && CimXFooting3D.isAvailable()) {
     const g = _zapLast.geometria;
     try {
       CimXFooting3D.render({
@@ -270,6 +448,14 @@ document.addEventListener('DOMContentLoaded', () => {
   $$('[data-vista-zap]').forEach(b =>
     b.addEventListener('click', () => setVistaZap(b.getAttribute('data-vista-zap'))));
 
+  // Selector de tipo/forma de zapata → muestra/oculta campos
+  const selTipo = $('#zap_tipo');
+  const selForma = $('#zap_forma');
+  if (selTipo) selTipo.addEventListener('change', zapAplicarTipo);
+  if (selForma) selForma.addEventListener('change', zapAplicarTipo);
+  if (selTipo) zapAplicarTipo();
+
+  window.zapAplicarTipo = zapAplicarTipo;
   window.zapCalcular = zapCalcular;
   window.zapMostrar = zapMostrar;
   window.zapGenerarPDF = zapGenerarPDF;

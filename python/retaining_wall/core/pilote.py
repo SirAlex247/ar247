@@ -281,19 +281,31 @@ def disenar_pilote_estructural(*, P_servicio, factor_carga=1.5, Pu=0.0,
                                db_long=0.01905, db_trans=0.00953,
                                recubrimiento=0.075,
                                D=0.0, N=0, L_max=25.0, L_min=3.0,
-                               N_min=1, N_max=80) -> dict:
+                               N_min=1, N_max=80,
+                               norma="NSR10", tipo_suelo="arena") -> dict:
     """Diseña pilotes a partir de la carga y de los parámetros geotécnicos.
 
     Datos de entrada (geotecnia del estudio de suelos):
       f_s  = fricción lateral unitaria última (kPa)
       q_p  = resistencia de punta unitaria última (kPa)
-      FS   = factor de seguridad geotécnico
-    Calcula: diámetro D, número de pilotes N, longitud L y acero longitudinal.
+      FS   = factor de seguridad geotécnico (solo NSR-10)
+
+    ``norma`` selecciona el tratamiento de seguridad geotécnico:
+      - NSR-10 (esfuerzos admisibles): Q_adm = Q_últ/FS ≥ P_servicio.
+      - CCP-14 (LRFD, Sección 10.7/10.8): R_r = φ_s·Q_fuste + φ_p·Q_punta ≥ P_u,
+        con φ según el material (``tipo_suelo`` arena/arcilla, Tabla 10.5.5.2.4-1).
     El pilote se verifica como columna corta a compresión (φP_n,máx).
     """
+    from ..normas import NORMA_CCP14, normalizar_norma
+    norma = normalizar_norma(norma)
+    ccp = (norma == NORMA_CCP14)
+    _ts = "arcilla" if str(tipo_suelo).lower().startswith(("arc", "clay", "cohes")) else "arena"
+    phi_s_geo = 0.55 if _ts == "arena" else 0.45      # φ fricción (drilled shaft)
+    phi_p_geo = 0.50 if _ts == "arena" else 0.40      # φ punta
+
     Pu_total = Pu if (Pu and Pu > 0) else factor_carga * P_servicio
     espiral = str(tipo_refuerzo).startswith(("espiral", "zuncho"))
-    phi = 0.75 if espiral else 0.65
+    phi = 0.75 if (espiral or ccp) else 0.65          # CCP-14 axial φ=0.75
     alpha = 0.85 if espiral else 0.80
     rho = max(float(cuantia), RHO_MIN_INSITU)
     fc_k = fc * 1000.0
@@ -307,12 +319,21 @@ def disenar_pilote_estructural(*, P_servicio, factor_carga=1.5, Pu=0.0,
         return phi * alpha * (0.85 * fc_k * (Ag - Ast) + fy_k * Ast), Ag, Ast
 
     def _L_geotec(Dd, n):
-        Qreq = (P_servicio / n) * FS                 # capacidad última requerida por pilote
-        Qtip = q_p * (math.pi * Dd ** 2 / 4.0)
+        A_tip = math.pi * Dd ** 2 / 4.0
         per = math.pi * Dd
-        if f_s * per <= 1e-9:
-            return L_min if Qtip >= Qreq else None
-        return max((Qreq - Qtip) / (f_s * per), L_min)
+        if ccp:
+            # LRFD: R_r = φ_p·q_p·A + φ_s·f_s·per·L ≥ P_u/n
+            dem = Pu_total / n
+            cap_tip = phi_p_geo * q_p * A_tip
+            cap_skin_unit = phi_s_geo * f_s * per
+        else:
+            # ASD: Q_últ = q_p·A + f_s·per·L ≥ (P_serv/n)·FS
+            dem = (P_servicio / n) * FS
+            cap_tip = q_p * A_tip
+            cap_skin_unit = f_s * per
+        if cap_skin_unit <= 1e-9:
+            return L_min if cap_tip >= dem else None
+        return max((dem - cap_tip) / cap_skin_unit, L_min)
 
     candidatos = [float(D)] if (D and D > 0) else DIAMETROS_STD
     elegido = None
@@ -352,9 +373,14 @@ def disenar_pilote_estructural(*, P_servicio, factor_carga=1.5, Pu=0.0,
     Qtip = q_p * (math.pi * Dd ** 2 / 4.0)
     Qskin = f_s * (math.pi * Dd * L)
     Qult = Qtip + Qskin
-    Qadm = Qult / FS
     Pserv_pile = P_servicio / n
     Pu_pile = Pu_total / n
+    if ccp:
+        R_r = phi_p_geo * Qtip + phi_s_geo * Qskin      # resistencia factorada / pilote
+        cumple_geo = R_r >= Pu_pile - 1e-6
+    else:
+        Qadm = Qult / FS
+        cumple_geo = Qadm >= Pserv_pile - 1e-6
 
     # Acero longitudinal
     n_barras = max(4, math.ceil(Ast / ab)) if ab > 0 else 0
@@ -381,13 +407,36 @@ def disenar_pilote_estructural(*, P_servicio, factor_carga=1.5, Pu=0.0,
         avisos.append(f"ρ = {rho_real*100:.2f}% supera el {RHO_MAX_PRACT*100:.0f}% práctico (congestión).")
 
     cumple_estr = phiPn >= Pu_pile - 1e-6
-    cumple_geo = Qadm >= Pserv_pile - 1e-6
     if not cumple_geo:
         avisos.append("Capacidad geotécnica por pilote insuficiente: aumenta L, D o el N° de pilotes.")
     if not cumple_estr:
         avisos.append("Capacidad estructural por pilote insuficiente: aumenta D o la cuantía.")
 
+    geotecnia = {
+        "norma": norma, "tipo_suelo": _ts,
+        "f_s_kPa": round(f_s, 1), "q_p_kPa": round(q_p, 1),
+        "Qpunta_kN": round(Qtip, 1), "Qfuste_kN": round(Qskin, 1),
+        "Qult_kN": round(Qult, 1),
+        "Pserv_pilote_kN": round(Pserv_pile, 1), "Pu_pilote_kN": round(Pu_pile, 1),
+        "cumple": cumple_geo,
+    }
+    if ccp:
+        geotecnia.update({
+            "metodo": "CCP-14 / AASHTO LRFD",
+            "phi_fuste": phi_s_geo, "phi_punta": phi_p_geo,
+            "R_r_kN": round(R_r, 1),
+            "ratio": round(Pu_pile / R_r, 3) if R_r > 0 else None,
+            "CDR": round(R_r / Pu_pile, 3) if Pu_pile > 0 else None,
+        })
+    else:
+        geotecnia.update({
+            "metodo": "NSR-10 (esfuerzos admisibles)", "FS": FS,
+            "Qadm_kN": round(Qadm, 1),
+            "ratio": round(Pserv_pile / Qadm, 3) if Qadm > 0 else None,
+        })
+
     return {
+        "norma": norma,
         "diseno": {
             "D_m": round(Dd, 3), "N_pilotes": int(n), "L_m": L,
             "auto_D": not (D and D > 0), "auto_N": not N_obj,
@@ -401,14 +450,7 @@ def disenar_pilote_estructural(*, P_servicio, factor_carga=1.5, Pu=0.0,
             "ratio": round(Pu_pile / phiPn, 3) if phiPn > 0 else None,
             "transversal": transversal, "cumple": cumple_estr,
         },
-        "geotecnia": {
-            "f_s_kPa": round(f_s, 1), "q_p_kPa": round(q_p, 1), "FS": FS,
-            "Qpunta_kN": round(Qtip, 1), "Qfuste_kN": round(Qskin, 1),
-            "Qult_kN": round(Qult, 1), "Qadm_kN": round(Qadm, 1),
-            "Pserv_pilote_kN": round(Pserv_pile, 1),
-            "ratio": round(Pserv_pile / Qadm, 3) if Qadm > 0 else None,
-            "cumple": cumple_geo,
-        },
+        "geotecnia": geotecnia,
         "cargas": {"P_servicio_kN": round(P_servicio, 1), "Pu_kN": round(Pu_total, 1),
                    "factor_carga": factor_carga},
         "cumple": cumple_estr and cumple_geo,

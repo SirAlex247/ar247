@@ -442,6 +442,25 @@ a:hover { color: var(--green-300); }
   font-size: 13.5px;
   margin-top: 4px;
 }
+/* Badge de norma de diseño activa (NSR-10 verde · CCP-14 azul) */
+.norma-badge {
+  flex: 0 0 auto;
+  align-self: center;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1.5px solid #15803d;
+  color: #15803d;
+  background: #dcfce7;
+  white-space: nowrap;
+}
+.norma-badge.ccp14 {
+  border-color: #1d4ed8;
+  color: #1d4ed8;
+  background: #dbeafe;
+}
 
 /* ---------- Tarjeta básica ---------- */
 .card {
@@ -880,15 +899,29 @@ table tbody tr:hover { background: rgba(22, 163, 74, 0.04); }
 .pdf-modal-actions { display: flex; gap: 8px; }
 .pdf-modal-body {
   flex: 1;
-  overflow: hidden;
-  padding: 8px;
+  overflow: auto;
+  padding: 14px;
   background: var(--bg-deepest);
 }
-.pdf-modal-body iframe {
-  width: 100%; height: 100%;
-  border: none;
-  border-radius: var(--r-sm);
+/* Contenedor de páginas renderizadas con PDF.js (canvas 2D, sin plugin) */
+.pdf-modal-pages {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+.pdf-page-canvas {
+  max-width: 100%;
+  height: auto;
   background: white;
+  border-radius: var(--r-sm);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
+}
+.pdf-modal-status {
+  color: var(--text-muted);
+  font-size: 13px;
+  padding: 24px;
+  text-align: center;
 }
 
 /* ============================================================

@@ -194,8 +194,10 @@ def generar_memoria_dado(datos, resultado, entradas) -> bytes:
     rec = float(entradas.get("recubrimiento", 0.075) or 0.075)
 
     # Encabezado
+    _ccp = str(resultado.get("norma", "NSR10")) == "CCP14"
+    _norm_txt = "CCP-14 / AASHTO LRFD (Sección 5)" if _ccp else "NSR-10 / ACI 318"
     el.append(Paragraph("Memoria de cálculo — Dado / cabezal de pilotes", h1))
-    el.append(Paragraph("Encepado sobre grupo de pilotes · NSR-10 / ACI 318 · método seccional y de bielas", small))
+    el.append(Paragraph(f"Encepado sobre grupo de pilotes · {_norm_txt} · método seccional y de bielas", small))
     el.append(HRFlowable(width="100%", thickness=1, color=VERDE, spaceBefore=6, spaceAfter=6))
 
     proy = getattr(datos, "proyecto", "") or "—"
@@ -261,10 +263,18 @@ def generar_memoria_dado(datos, resultado, entradas) -> bytes:
         f"D/C = {rp} → <b>{_ok(c['cumple_pilote'])}</b>.", p))
 
     # 4. Diseño estructural
+    est = resultado["estructural"]
     el.append(Paragraph("4. Diseño estructural", h2))
-    el.append(Paragraph(
-        f"Peralte efectivo d = {g['d_m']:.3f} m (h = {g['h_m']:.2f} m). "
-        f"φ<sub>cortante</sub> = 0.75, φ<sub>flexión</sub> = 0.90.", p))
+    if _ccp:
+        el.append(Paragraph(
+            f"Peralte efectivo d = {g['d_m']:.3f} m (h = {g['h_m']:.2f} m); peralte de "
+            f"cortante d<sub>v</sub> = máx(0.9d, 0.72h) = {est.get('dv_m', g['d_m']):.3f} m. "
+            f"φ<sub>cortante</sub> = {est.get('phi_corte', 0.9)}, φ<sub>flexión</sub> = 0.90 "
+            f"(CCP-14 / AASHTO Sección 5).", p))
+    else:
+        el.append(Paragraph(
+            f"Peralte efectivo d = {g['d_m']:.3f} m (h = {g['h_m']:.2f} m). "
+            f"φ<sub>cortante</sub> = 0.75, φ<sub>flexión</sub> = 0.90.", p))
 
     el.append(Paragraph("4.1 Punzonamiento (dos vías)", p))
     el.append(_tabla([
@@ -338,7 +348,7 @@ def generar_memoria_dado(datos, resultado, entradas) -> bytes:
 
     el.append(Spacer(1, 12))
     el.append(HRFlowable(width="100%", thickness=0.5, color=GRIS_CLARO))
-    el.append(Paragraph("Generado por CimX · Dado / cabezal de pilotes · NSR-10 / ACI 318", small))
+    el.append(Paragraph(f"Generado por CimX · Dado / cabezal de pilotes · {_norm_txt}", small))
 
     doc.build(el)
     return buf.getvalue()

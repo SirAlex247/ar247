@@ -27,12 +27,41 @@ import matplotlib.pyplot as plt
 from ..models.muro import MuroContencion
 
 
-# Paleta
-COLOR_CONCRETO = "#555555"
-COLOR_RELLENO = "#C9A96E"
-COLOR_CIMIENTO = "#8B6F47"
-COLOR_ACOTADO = "#0066CC"
-COLOR_EMPUJE = "#D93025"
+# =============================================================================
+# Paleta técnica (tonos profesionales, estilo dibujo de ingeniería)
+# =============================================================================
+COLOR_CONCRETO = "#707a86"        # gris pizarra (permite texto blanco encima)
+COLOR_CONCRETO_HATCH = "#333b45"  # trama/aristas del concreto
+COLOR_RELLENO = "#d9c39a"         # arena/relleno (suave)
+COLOR_RELLENO_LN = "#8a7a52"      # línea del relleno
+COLOR_CIMIENTO = "#a98d67"        # suelo de cimentación (terracota suave)
+COLOR_CIMIENTO_LN = "#7d6648"
+COLOR_ACOTADO = "#1d4ed8"         # cotas (azul técnico)
+COLOR_EMPUJE = "#c0392b"          # empuje activo (rojo muted)
+COLOR_PASIVO = "#2e7d32"          # empuje pasivo (verde)
+COLOR_TXT = "#1f2937"             # texto principal
+COLOR_TXT_SUAVE = "#556070"       # texto secundario
+
+
+def _estilo_tecnico(ax, fig=None, *, grid=False):
+    """Aplica un acabado técnico y homogéneo a los ejes de una figura.
+
+    - Tipografía consistente y tamaños legibles.
+    - Rejilla sutil opcional (para diagramas), spines discretos.
+    - Fondo blanco para lectura tipo plano.
+    """
+    if fig is not None:
+        fig.patch.set_facecolor("white")
+    ax.set_facecolor("white")
+    for spine in ax.spines.values():
+        spine.set_edgecolor("#c7ced6")
+        spine.set_linewidth(0.9)
+    ax.tick_params(colors=COLOR_TXT_SUAVE, labelsize=10, length=3, width=0.8)
+    for lbl in ax.get_xticklabels() + ax.get_yticklabels():
+        lbl.set_color(COLOR_TXT_SUAVE)
+    if grid:
+        ax.grid(True, which="major", color="#e6eaf0", lw=0.8, zorder=0)
+        ax.set_axisbelow(True)
 
 
 def dibujar_muro(muro: MuroContencion,
@@ -68,6 +97,7 @@ def dibujar_muro(muro: MuroContencion,
     y_tope_relleno = g.e_zapata + H_rel
 
     fig, ax = plt.subplots(figsize=figsize)
+    plt.rcParams["hatch.linewidth"] = 0.5   # achurado fino para el concreto
 
     # --- Márgenes ---
     # Interfaz: un poco más amplio para que se vea "alejado" (modo numerico).
@@ -97,7 +127,8 @@ def dibujar_muro(muro: MuroContencion,
     # ---------- Zapata ----------
     zapata = mpatches.Rectangle(
         (0, 0), g.B, g.e_zapata,
-        facecolor=COLOR_CONCRETO, edgecolor="black", lw=1.8, zorder=5,
+        facecolor=COLOR_CONCRETO, edgecolor=COLOR_CONCRETO_HATCH, lw=1.6,
+        hatch="xxx", zorder=5,
     )
     ax.add_patch(zapata)
 
@@ -105,7 +136,8 @@ def dibujar_muro(muro: MuroContencion,
     if g.tiene_diente:
         diente = mpatches.Rectangle(
             (g.x_diente_ef, -g.h_diente), g.b_diente, g.h_diente,
-            facecolor=COLOR_CONCRETO, edgecolor="black", lw=1.8, zorder=5,
+            facecolor=COLOR_CONCRETO, edgecolor=COLOR_CONCRETO_HATCH, lw=1.6,
+            hatch="xxx", zorder=5,
         )
         ax.add_patch(diente)
 
@@ -123,7 +155,8 @@ def dibujar_muro(muro: MuroContencion,
     ]
     vastago = mpatches.Polygon(
         vastago_pts, closed=True,
-        facecolor=COLOR_CONCRETO, edgecolor="black", lw=1.8, zorder=5,
+        facecolor=COLOR_CONCRETO, edgecolor=COLOR_CONCRETO_HATCH, lw=1.6,
+        hatch="xxx", zorder=5,
     )
     ax.add_patch(vastago)
 
@@ -364,22 +397,20 @@ def dibujar_muro(muro: MuroContencion,
     ax.set_xlim(x_min, x_max)
     ax.set_ylim(y_min, y_max + 0.8)
     ax.set_aspect("equal")
-    ax.set_xlabel("x (m)", fontsize=12)
-    ax.set_ylabel("y (m)", fontsize=12)
-    ax.tick_params(labelsize=10)
+    ax.set_xlabel("x (m)", fontsize=11, color=COLOR_TXT_SUAVE)
+    ax.set_ylabel("y (m)", fontsize=11, color=COLOR_TXT_SUAVE)
 
     if modo == "nombres":
-        titulo = (f"Muro de Contención — Esquema con identificación "
-                  f"de las partes del muro")
+        titulo = "Muro de contención — identificación de las partes"
     elif modo == "cotas":
-        titulo = (f"Muro de Contención — Cotas y dimensiones  "
-                  f"(H = {g.H_total:.2f} m, B = {g.B:.2f} m)")
+        titulo = (f"Muro de contención — cotas y dimensiones  "
+                  f"(H = {g.H_total:.2f} m · B = {g.B:.2f} m)")
     else:
-        titulo = f"Muro de Contención — H = {g.H_total:.2f} m, B = {g.B:.2f} m"
-    ax.set_title(titulo, fontsize=14, fontweight="bold")
-    ax.grid(True, alpha=0.25, ls=":")
-    ax.set_axisbelow(True)
+        titulo = f"Muro de contención — H = {g.H_total:.2f} m · B = {g.B:.2f} m"
+    ax.set_title(titulo, fontsize=13.5, fontweight="bold",
+                 color=COLOR_TXT, pad=12)
 
+    _estilo_tecnico(ax, fig, grid=True)
     plt.tight_layout()
     return fig
 
@@ -482,8 +513,10 @@ def dibujar_diagrama_empujes(muro: MuroContencion,
     # Silueta esquemática del muro (un rectángulo + línea de terreno)
     x_muro_ini = 0.0
     x_muro_fin = 0.35     # espesor visual del muro en la gráfica
+    plt.rcParams["hatch.linewidth"] = 0.5
     ax.add_patch(mpatches.Rectangle((x_muro_ini, 0), x_muro_fin, H,
-                 facecolor="#888", edgecolor="black", lw=1.4, zorder=3))
+                 facecolor=COLOR_CONCRETO, edgecolor=COLOR_CONCRETO_HATCH,
+                 lw=1.4, hatch="xxx", zorder=3))
     # Línea de la base de zapata
     ax.plot([-0.3 - Hp*k_plot*0.5, x_muro_fin + 0.3 + (sigma_a_max+sigma_q)*k_plot + 0.5],
             [0, 0], color="black", lw=1.0, ls="--", alpha=0.5)
@@ -601,16 +634,19 @@ def dibujar_diagrama_empujes(muro: MuroContencion,
             rotation=90, color="#555", fontsize=11, fontweight="bold",
             ha="right", va="center")
 
-    # Texto con coeficientes y fórmulas
+    # Texto con coeficientes y fórmulas — en la esquina superior IZQUIERDA
+    # (zona vacía: el empuje pasivo solo ocupa la franja inferior). Así no se
+    # solapa con las etiquetas σp_máx / Pp que van abajo a la izquierda.
     caja = (f"Coeficientes:  Ka = {Ka:.3f}   Kp = {Kp:.3f}\n"
-            f"Método: Rankine · Relleno: γ={_fmtU.fmt_densidad_suelo(rel.gamma)}, φ={rel.phi}°, "
-            f"α={cond.alpha}°\n"
-            f"Cimentación: γ={_fmtU.fmt_densidad_suelo(cim.gamma)}, φ={cim.phi}°, c'={_fmtU.fmt_presion(cim.cohesion)}")
-    ax.text(0.02, 0.02, caja, transform=ax.transAxes,
-            fontsize=10, color="#1f2937", family="monospace",
+            f"Método: Rankine · Relleno: γ={_fmtU.fmt_densidad_suelo(rel.gamma)}, "
+            f"φ={rel.phi}°, α={cond.alpha}°\n"
+            f"Cimentación: γ={_fmtU.fmt_densidad_suelo(cim.gamma)}, "
+            f"φ={cim.phi}°, c'={_fmtU.fmt_presion(cim.cohesion)}")
+    ax.text(0.015, 0.985, caja, transform=ax.transAxes,
+            fontsize=9, color="#1f2937", family="monospace",
             bbox=dict(boxstyle="round,pad=0.4", facecolor="#f3f4f6",
                       edgecolor="#cbd5e1", lw=0.8),
-            verticalalignment="bottom")
+            horizontalalignment="left", verticalalignment="top", zorder=6)
 
     # Leyenda
     legend_items = [
@@ -635,13 +671,15 @@ def dibujar_diagrama_empujes(muro: MuroContencion,
     ax.set_xlim(x_izq_min, x_der_max)
     ax.set_ylim(-0.6, H + 0.8)
     ax.set_aspect("auto")
-    ax.set_xlabel("x (m) — escala presiones: " +
-                  f"{1/k_plot:.1f} {_fmtU.u_presion} por metro gráfico", fontsize=11)
-    ax.set_ylabel("Altura desde la base de la zapata y (m)", fontsize=11)
-    ax.set_title("Diagrama de presiones laterales — Empuje activo, "
+    ax.set_xlabel("x (m) — escala de presiones: " +
+                  f"{1/k_plot:.1f} {_fmtU.u_presion} por metro gráfico",
+                  fontsize=11, color=COLOR_TXT_SUAVE)
+    ax.set_ylabel("Altura sobre la base de la zapata, y (m)", fontsize=11,
+                  color=COLOR_TXT_SUAVE)
+    ax.set_title("Diagrama de presiones laterales — empuje activo, "
                  "sobrecarga y empuje pasivo",
-                 fontsize=13, fontweight="bold")
-    ax.grid(True, alpha=0.25, ls=":")
+                 fontsize=13, fontweight="bold", color=COLOR_TXT, pad=12)
+    _estilo_tecnico(ax, fig, grid=True)
     plt.tight_layout()
     return fig
 
@@ -727,9 +765,11 @@ def dibujar_diagrama_sismo(muro: MuroContencion,
     x_muro_fin = g.B_vastago_prom = (g.b_corona + g.b_base_vast) / 2  # grueso visual
     # Pero queremos que se vea elegante: dibujamos silueta real completa
     x0 = 0
-    # Zapata
+    plt.rcParams["hatch.linewidth"] = 0.5
+    # Zapata (concreto con achurado técnico)
     ax.add_patch(mpatches.Rectangle((x0, 0), g.B, g.e_zapata,
-                 facecolor="#9ca3af", edgecolor="black", lw=1.4, zorder=3))
+                 facecolor=COLOR_CONCRETO, edgecolor=COLOR_CONCRETO_HATCH,
+                 lw=1.4, hatch="xxx", zorder=3))
     # Vástago
     vastago_pts = [
         (g.x_cara_frontal_base, g.e_zapata),
@@ -738,7 +778,8 @@ def dibujar_diagrama_sismo(muro: MuroContencion,
         (g.x_cara_frontal_corona, g.H_total),
     ]
     ax.add_patch(mpatches.Polygon(vastago_pts, closed=True,
-                 facecolor="#9ca3af", edgecolor="black", lw=1.4, zorder=3))
+                 facecolor=COLOR_CONCRETO, edgecolor=COLOR_CONCRETO_HATCH,
+                 lw=1.4, hatch="xxx", zorder=3))
 
     # Línea base zapata y tope del relleno
     ax.plot([-g.B*0.5, g.B*1.8], [0, 0], color="black", lw=1.0, ls="--", alpha=0.5)
@@ -852,11 +893,13 @@ def dibujar_diagrama_sismo(muro: MuroContencion,
     ax.set_xlim(-g.B*0.6, g.B*1.8 + 3.5)
     ax.set_ylim(-0.5, g.H_total + 1.3)
     ax.set_aspect("auto")
-    ax.set_xlabel("x (m) — medido desde la puntera C", fontsize=11)
-    ax.set_ylabel("y (m) — altura desde la base de la zapata", fontsize=11)
-    ax.set_title("Diagrama de cargas sísmicas — Mononobe-Okabe (NSR-10 H.6)",
-                 fontsize=13, fontweight="bold")
-    ax.grid(True, alpha=0.25, ls=":")
+    ax.set_xlabel("x (m) — medido desde la puntera C", fontsize=11,
+                  color=COLOR_TXT_SUAVE)
+    ax.set_ylabel("y (m) — altura sobre la base de la zapata", fontsize=11,
+                  color=COLOR_TXT_SUAVE)
+    ax.set_title("Diagrama de cargas sísmicas — Mononobe-Okabe",
+                 fontsize=13, fontweight="bold", color=COLOR_TXT, pad=12)
+    _estilo_tecnico(ax, fig, grid=True)
     plt.tight_layout()
     return fig
 
@@ -912,22 +955,24 @@ def dibujar_esfuerzos_zapata(
         return f"{val:.2f} {u_m}"
 
     fig, ax = plt.subplots(figsize=(11.0, 5.4))
+    plt.rcParams["hatch.linewidth"] = 0.5
 
-    # --- zapata (alzado) ---
+    # --- zapata (alzado) — concreto con achurado técnico ---
     y_base = 0.0
     y_top  = g.e_zapata
     ax.add_patch(mpatches.Rectangle(
         (0, y_base), B, g.e_zapata,
-        facecolor="#e5e7eb", edgecolor="#374151", linewidth=1.3))
+        facecolor="#dfe4ea", edgecolor=COLOR_CONCRETO_HATCH, linewidth=1.3,
+        hatch="xxx"))
 
     # --- vástago (sólo indicación del arranque) ---
     h_ind = min(0.8, g.e_zapata * 1.5)   # altura ilustrativa
     ax.add_patch(mpatches.Rectangle(
         (x_cara_fr_vast, y_top), g.b_base_vast, h_ind,
-        facecolor="#cbd5e1", edgecolor="#374151",
-        linewidth=1.0, hatch="////"))
+        facecolor="#cbd3dd", edgecolor=COLOR_CONCRETO_HATCH,
+        linewidth=1.0, hatch="xxx"))
     ax.annotate("vástago", xy=(x_cara_fr_vast + g.b_base_vast/2, y_top + h_ind*0.55),
-                ha="center", fontsize=9, color="#374151")
+                ha="center", fontsize=9, color=COLOR_TXT)
 
     # --- trapecio de presiones (abajo, con flechas hacia ARRIBA = reacción) ---
     # Escala vertical: q_max mapea a una altura gráfica de 2.2 m hacia abajo.
@@ -980,33 +1025,40 @@ def dibujar_esfuerzos_zapata(
     _place(x_cara_po_vast, q_po,      "q en cara posterior vástago", 2)
     _place(B,              q_talon,   "q en talón",             3, ha="right")
 
-    # Líneas verticales punteadas en las caras del vástago (secciones críticas
-    # para el cálculo del momento en punta y talón)
-    for x_sec, label in [(x_cara_fr_vast, "sección crítica\n(punta)"),
-                         (x_cara_po_vast, "sección crítica\n(talón)")]:
-        ax.plot([x_sec, x_sec], [y_q_punt - 0.3, y_top + h_ind + 0.4],
-                ls=":", color="#dc2626", lw=1.3, alpha=0.85)
-        ax.annotate(label, xy=(x_sec, y_top + h_ind + 0.45),
-                    ha="center", fontsize=8, color="#dc2626",
-                    style="italic")
+    # Bandas verticales por encima de la zapata para evitar solapes:
+    #   nivel Mu   (cajas verdes)      —  y_mu
+    #   nivel sec  (secciones críticas) —  y_sec  (más arriba)
+    y_mu  = y_top + h_ind + 0.30
+    y_sec = y_top + h_ind + 1.10
 
-    # Mu en recuadros (si se pasan)
+    # Mu en recuadros (si se pasan) — centrados en cada voladizo
     if Mu_punta is not None:
-        x_txt = x_cara_fr_vast / 2.0
         ax.annotate(f"M_u (punta) = {_fmt_m(Mu_punta)}",
-                    xy=(x_txt, y_top + h_ind + 0.2),
-                    ha="center", fontsize=10, fontweight="bold",
+                    xy=(x_cara_fr_vast / 2.0, y_mu),
+                    ha="center", va="bottom", fontsize=10, fontweight="bold",
                     color="#065f46",
                     bbox=dict(boxstyle="round,pad=0.35",
                               fc="#d1fae5", ec="#065f46", lw=1.0))
     if Mu_talon is not None:
-        x_txt = x_cara_po_vast + (B - x_cara_po_vast) / 2.0
         ax.annotate(f"M_u (talón) = {_fmt_m(Mu_talon)}",
-                    xy=(x_txt, y_top + h_ind + 0.2),
-                    ha="center", fontsize=10, fontweight="bold",
+                    xy=(x_cara_po_vast + (B - x_cara_po_vast) / 2.0, y_mu),
+                    ha="center", va="bottom", fontsize=10, fontweight="bold",
                     color="#065f46",
                     bbox=dict(boxstyle="round,pad=0.35",
                               fc="#d1fae5", ec="#065f46", lw=1.0))
+
+    # Líneas verticales punteadas en las caras del vástago (secciones críticas
+    # para el cálculo del momento en punta y talón). Etiquetas en la banda
+    # superior, de una sola línea y separadas horizontalmente (punta a la
+    # izquierda, talón a la derecha) para no solaparse entre sí ni con el vástago.
+    for x_sec, label, ha, dx in [
+            (x_cara_fr_vast, "sección crítica (punta)", "right", -0.07),
+            (x_cara_po_vast, "sección crítica (talón)", "left",  0.07)]:
+        ax.plot([x_sec, x_sec], [y_q_punt - 0.3, y_sec - 0.05],
+                ls=":", color="#dc2626", lw=1.3, alpha=0.85)
+        ax.annotate(label, xy=(x_sec + dx, y_sec),
+                    ha=ha, va="bottom", fontsize=8, color="#dc2626",
+                    style="italic")
 
     # Línea horizontal = base de la zapata
     ax.axhline(y_base, color="#374151", lw=1.2)
@@ -1026,17 +1078,22 @@ def dibujar_esfuerzos_zapata(
 
     # Ajuste visual
     ax.set_xlim(-0.7, B + 0.7)
-    ax.set_ylim(y_cota - 0.8, y_top + h_ind + 1.0)
+    ax.set_ylim(y_cota - 0.8, y_top + h_ind + 1.75)
     ax.set_aspect("auto")
-    ax.set_xlabel("x (m) — medido desde la puntera (C)", fontsize=10)
+    ax.set_xlabel("x (m) — medido desde la puntera (C)", fontsize=10,
+                  color=COLOR_TXT_SUAVE)
     ax.set_yticks([])
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
     ax.spines["left"].set_visible(False)
+    ax.spines["bottom"].set_edgecolor("#c7ced6")
+    ax.tick_params(colors=COLOR_TXT_SUAVE, labelsize=9.5)
+    fig.patch.set_facecolor("white"); ax.set_facecolor("white")
     ax.set_title(
-        "Distribución de presiones bajo la zapata (sin mayorar)",
-        fontsize=12, fontweight="bold", color="#065f46", pad=12)
-    ax.grid(True, axis="x", alpha=0.2, ls=":")
+        "Distribución de presiones de contacto bajo la zapata",
+        fontsize=12.5, fontweight="bold", color=COLOR_TXT, pad=12)
+    ax.grid(True, axis="x", color="#e6eaf0", lw=0.8)
+    ax.set_axisbelow(True)
     plt.tight_layout()
     return fig
 

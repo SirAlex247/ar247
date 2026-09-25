@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>CimX — Diseño geotécnico y estructural · NSR-10</title>
+  <title>CimX — Diseño geotécnico y estructural</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -18,7 +18,7 @@
       <div class="brand-logo">AR</div>
       <div>
         <div class="dash-title">CimX</div>
-        <div class="dash-sub">Software de diseño geotécnico y estructural · NSR-10</div>
+        <div class="dash-sub">Software de diseño geotécnico y estructural · NSR-10 y CCP-14</div>
       </div>
     </div>
 
@@ -29,7 +29,7 @@
       <button class="module-card" data-modulo-sel="muro">
         <div class="mc-icon"><svg viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M5 21V8l7-5 7 5v13"/><path d="M9 21V12h6v9"/></svg></div>
         <div class="mc-title">Muros de contención</div>
-        <div class="mc-desc">Voladizo y gravedad · estabilidad, empujes, sismo NSR-10, diseño estructural y vista 3D.</div>
+        <div class="mc-desc">Voladizo y gravedad · estabilidad, empujes y sismo · diseño estructural por NSR-10 o CCP-14 · vista 3D.</div>
         <div class="mc-badge ok">Disponible</div>
       </button>
 
@@ -43,19 +43,40 @@
       <button class="module-card" data-modulo-sel="zapata">
         <div class="mc-icon"><svg viewBox="0 0 24 24"><path d="M9 3v6"/><path d="M15 3v6"/><path d="M5 9h14v3a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2z"/><path d="M3 21h18"/><path d="M8 14v7"/><path d="M16 14v7"/></svg></div>
         <div class="mc-title">Zapatas</div>
-        <div class="mc-desc">Zapata aislada · dimensionamiento geotécnico y diseño estructural (punzonamiento, cortante y flexión).</div>
+        <div class="mc-desc">Aislada, combinada, conectada/medianera y triangular · geotecnia y diseño estructural (punzonamiento, cortante y flexión).</div>
+        <div class="mc-badge ok">Disponible</div>
+      </button>
+
+      <button class="module-card" data-modulo-sel="placa">
+        <div class="mc-icon"><svg viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="10" rx="1"/><path d="M7 8V5"/><path d="M12 8V5"/><path d="M17 8V5"/><circle cx="7" cy="13" r="1"/><circle cx="12" cy="13" r="1"/><circle cx="17" cy="13" r="1"/></svg></div>
+        <div class="mc-title">Placas macizas</div>
+        <div class="mc-desc">Losa de cimentación maciza (mat) · método rígido · presiones biaxiales, punzonamiento por columna y flexión por franjas (NSR-10).</div>
+        <div class="mc-badge ok">Disponible</div>
+      </button>
+
+      <button class="module-card" data-modulo-sel="caisson">
+        <div class="mc-icon"><svg viewBox="0 0 24 24"><path d="M3 4h18"/><path d="M9 4v13"/><path d="M15 4v13"/><path d="M9 17c0 2 1.3 3 3 3s3-1 3-3"/><path d="M7 9h10"/><path d="M7 13h10"/></svg></div>
+        <div class="mc-title">Caissons / pilas</div>
+        <div class="mc-desc">Pila excavada de gran diámetro (drilled shaft) · capacidad axial punta+fuste, campana opcional · norma elegible NSR-10 ↔ CCP-14.</div>
         <div class="mc-badge ok">Disponible</div>
       </button>
 
       <button class="module-card" data-modulo-sel="dado">
         <div class="mc-icon"><svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="6" rx="1"/><path d="M7 12v9"/><path d="M12 12v9"/><path d="M17 12v9"/><path d="M10 3h4v3h-4z"/></svg></div>
         <div class="mc-title">Dados / Cabezales</div>
-        <div class="mc-desc">Encepado sobre 1 a 6 pilotes · reacciones, punzonamiento, cortante, flexión y método de bielas.</div>
+        <div class="mc-desc">Encepado sobre 1 a 6 pilotes · reacciones, punzonamiento, cortante, flexión y método de bielas · norma elegible NSR-10 ↔ CCP-14.</div>
+        <div class="mc-badge ok">Disponible</div>
+      </button>
+
+      <button class="module-card" data-modulo-sel="maquina">
+        <div class="mc-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="3"/><path d="M12 2v2"/><path d="M12 14v2"/><path d="M5 21h14"/><path d="M5 21v-4h14v4"/><path d="M19 5l1.5-1.5"/><path d="M5 5L3.5 3.5"/></svg></div>
+        <div class="mc-title">Cimentación de máquinas</div>
+        <div class="mc-desc">Bloque para maquinaria dinámica · ACI 351.3R · rigidez y amortiguamiento del suelo, frecuencias naturales, resonancia y amplitud de vibración.</div>
         <div class="mc-badge ok">Disponible</div>
       </button>
     </div>
 
-    <div class="dash-foot">CimX v1.0 · NSR-10 · Colombia</div>
+    <div class="dash-foot">CimX v1.0 · NSR-10 / CCP-14 · Colombia</div>
   </div>
 </div>
 
@@ -127,6 +148,28 @@
         <span class="label">Memoria de cálculo</span>
       </button>
 
+      <!-- ───── Módulo: PLACA MACIZA ───── -->
+      <div class="nav-section" data-module="placa">Diseño de la placa</div>
+      <button class="nav-item" data-view="placa" data-module="placa">
+        <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="10" rx="1"/><path d="M7 8V5"/><path d="M12 8V5"/><path d="M17 8V5"/><circle cx="7" cy="13" r="1"/><circle cx="12" cy="13" r="1"/><circle cx="17" cy="13" r="1"/></svg>
+        <span class="label">Diseño de Placa</span>
+      </button>
+      <button class="nav-item" data-view="placareport" data-module="placa">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>
+        <span class="label">Memoria de cálculo</span>
+      </button>
+
+      <!-- ───── Módulo: CAISSON / PILA ───── -->
+      <div class="nav-section" data-module="caisson">Diseño del caisson</div>
+      <button class="nav-item" data-view="caisson" data-module="caisson">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M9 3v14"/><path d="M15 3v14"/><path d="M9 17c0 2 1.3 3 3 3s3-1 3-3"/><path d="M7 8h10"/><path d="M7 12h10"/></svg>
+        <span class="label">Diseño del Caisson</span>
+      </button>
+      <button class="nav-item" data-view="caissonreport" data-module="caisson">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>
+        <span class="label">Memoria de cálculo</span>
+      </button>
+
       <div class="nav-section" data-module="dado">Diseño del dado</div>
       <button class="nav-item" data-view="dado" data-module="dado">
         <svg class="icon" viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="6" rx="1"/><path d="M7 12v9"/><path d="M12 12v9"/><path d="M17 12v9"/><path d="M10 3h4v3h-4z"/></svg>
@@ -137,9 +180,20 @@
         <span class="label">Memoria de cálculo</span>
       </button>
 
+      <!-- ───── Módulo: MÁQUINAS ───── -->
+      <div class="nav-section" data-module="maquina">Cimentación de máquina</div>
+      <button class="nav-item" data-view="maquina" data-module="maquina">
+        <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="9" r="3"/><path d="M12 2v2"/><path d="M5 21h14"/><path d="M5 21v-4h14v4"/></svg>
+        <span class="label">Diseño de Máquina</span>
+      </button>
+      <button class="nav-item" data-view="maquinareport" data-module="maquina">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>
+        <span class="label">Memoria de cálculo</span>
+      </button>
+
       <!-- ───── Compartido ───── -->
-      <div class="nav-section" data-module="muro pilote zapata dado">Proyecto</div>
-      <button class="nav-item" data-view="project" data-module="muro pilote zapata dado">
+      <div class="nav-section" data-module="muro pilote zapata placa caisson dado maquina">Proyecto</div>
+      <button class="nav-item" data-view="project" data-module="muro pilote zapata placa caisson dado maquina">
         <svg class="icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
         <span class="label">Datos del Proyecto</span>
       </button>
@@ -147,7 +201,7 @@
 
     <div class="nav-footer">
       <div>CimX <span class="version">v1.0.0</span></div>
-      <div style="opacity:0.6">NSR-10 · Colombia</div>
+      <div style="opacity:0.6">NSR-10 / CCP-14 · Colombia</div>
     </div>
   </aside>
 
@@ -216,12 +270,39 @@
         <svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         <span>Generar PDF</span>
       </button>
+      <!-- Placa -->
+      <button class="btn btn-primary" id="btn-placa-calc-h" data-module="placa">
+        <svg class="icon" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        <span>Calcular</span>
+      </button>
+      <button class="btn btn-secondary" id="btn-placa-pdf-h" data-module="placa">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        <span>Generar PDF</span>
+      </button>
+      <!-- Caisson -->
+      <button class="btn btn-primary" id="btn-caisson-calc-h" data-module="caisson">
+        <svg class="icon" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        <span>Calcular</span>
+      </button>
+      <button class="btn btn-secondary" id="btn-caisson-pdf-h" data-module="caisson">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        <span>Generar PDF</span>
+      </button>
       <!-- Dado -->
       <button class="btn btn-primary" id="btn-dado-calc-h" data-module="dado">
         <svg class="icon" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
         <span>Calcular</span>
       </button>
       <button class="btn btn-secondary" id="btn-dado-pdf-h" data-module="dado">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        <span>Generar PDF</span>
+      </button>
+      <!-- Máquina -->
+      <button class="btn btn-primary" id="btn-maq-calc-h" data-module="maquina">
+        <svg class="icon" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        <span>Calcular</span>
+      </button>
+      <button class="btn btn-secondary" id="btn-maq-pdf-h" data-module="maquina">
         <svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         <span>Generar PDF</span>
       </button>
@@ -238,6 +319,7 @@
           <div class="view-title">Resumen del Proyecto</div>
           <div class="view-subtitle">Vista global del diseño · KPIs de estabilidad</div>
         </div>
+        <div id="norma-badge" class="norma-badge" title="Norma de diseño activa">NSR-10</div>
       </div>
 
       <div class="kpi-grid">
@@ -293,7 +375,7 @@
             <div class="kpi"><div class="kpi-label">Capacidad</div><div class="kpi-value">—</div><div class="kpi-foot muted">Sin análisis</div></div>
             <div class="kpi"><div class="kpi-label">Excentricidad</div><div class="kpi-value">—</div><div class="kpi-foot muted">Sin análisis</div></div>
           </div>
-          <div class="hint mt-3">
+          <div class="hint mt-3" id="hint-estabilidad">
             <b>Estabilidad externa:</b> según NSR-10, los FS mínimos son 2.0 (volcamiento), 1.5 (deslizamiento) y 3.0 (capacidad portante).
           </div>
         </div>
@@ -344,6 +426,25 @@
                 <option value="rankine">Rankine</option>
                 <option value="coulomb">Coulomb</option>
               </select>
+            </div>
+            <div class="field">
+              <label class="field-label">Norma de diseño</label>
+              <select id="norma" class="input">
+                <option value="NSR10" selected>NSR-10 (esfuerzos admisibles · FS)</option>
+                <option value="CCP14">CCP-14 (LRFD-AASHTO · φ)</option>
+              </select>
+            </div>
+            <div id="ccp14-opts" style="display:none">
+              <div class="field">
+                <label class="field-label" style="font-weight:400">
+                  <input type="checkbox" id="apoyo_roca" style="width:auto"> Cimentación apoyada en roca
+                  <span class="muted size-sm">(límite de excentricidad 0.45·B)</span>
+                </label>
+              </div>
+              <div class="field">
+                <label class="field-label">γ<sub>EQ</sub> (carga viva en Evento Extremo I)</label>
+                <input type="number" id="gamma_EQ" class="input" value="0.5" step="0.1" min="0" max="1">
+              </div>
             </div>
           </div>
 
@@ -534,7 +635,7 @@
       <div class="view-header">
         <div>
           <div class="view-title">Cargas y Sismo</div>
-          <div class="view-subtitle">Sobrecarga superficial, inclinación del relleno, sismo NSR-10</div>
+          <div class="view-subtitle">Sobrecarga superficial, inclinación del relleno y sismo (NSR-10 / CCP-14)</div>
         </div>
       </div>
 
@@ -726,6 +827,25 @@
         <!-- IZQUIERDA: entradas -->
         <div style="display:flex;flex-direction:column;gap:20px">
           <div class="card">
+            <div class="card-header"><div class="card-title">Norma de diseño</div></div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">Norma</label>
+                <select id="pil_norma" class="input">
+                  <option value="NSR10" selected>NSR-10 — esfuerzos admisibles (FS)</option>
+                  <option value="CCP14">CCP-14 / AASHTO LRFD (φ)</option>
+                </select>
+              </div>
+              <div class="field pil-norma-cond" data-norma="CCP14"><label class="field-label">Suelo del fuste/punta</label>
+                <select id="pil_tsuelo" class="input">
+                  <option value="arena" selected>Arena (φ 0.55/0.50)</option>
+                  <option value="arcilla">Arcilla (φ 0.45/0.40)</option>
+                </select>
+              </div>
+            </div>
+            <div class="hint" id="pil-norma-hint" style="margin-top:2px"></div>
+          </div>
+
+          <div class="card">
             <div class="card-header"><div class="card-title">Cargas</div></div>
             <div class="field-row">
               <div class="field">
@@ -752,11 +872,11 @@
                 <input type="number" id="pil_qp" data-mag="pressure" class="input" value="250" step="10">
               </div>
             </div>
-            <div class="field" style="max-width:260px">
+            <div class="field pil-norma-cond" data-norma="NSR10" style="max-width:260px">
               <label class="field-label">FS geotécnico</label>
               <input type="number" id="pil_FS" class="input" value="2.5" step="0.5">
             </div>
-            <div class="hint mt-3">Valores últimos por unidad de área del estudio geotécnico. Q<sub>adm</sub> = (q<sub>p</sub>·A<sub>punta</sub> + f<sub>s</sub>·πDL)/FS.</div>
+            <div class="hint mt-3">Valores últimos por unidad de área del estudio geotécnico. NSR-10: Q<sub>adm</sub> = (q<sub>p</sub>·A<sub>punta</sub> + f<sub>s</sub>·πDL)/FS. CCP-14: R<sub>r</sub> = φ<sub>p</sub>·Q<sub>punta</sub> + φ<sub>s</sub>·Q<sub>fuste</sub>.</div>
           </div>
 
           <div class="card">
@@ -830,7 +950,7 @@
               <div class="kpi"><div class="kpi-label">Longitud L</div><div class="kpi-value" id="pk-l">—</div><div class="kpi-unit">m</div></div>
               <div class="kpi"><div class="kpi-label">Acero (ρ)</div><div class="kpi-value" id="pk-as">—</div><div class="kpi-unit">cm²</div></div>
               <div class="kpi"><div class="kpi-label">φPn / pilote</div><div class="kpi-value" id="pk-phipn">—</div><div class="kpi-unit">tonf</div></div>
-              <div class="kpi"><div class="kpi-label">Q admisible</div><div class="kpi-value" id="pk-qadm">—</div><div class="kpi-unit">tonf</div></div>
+              <div class="kpi"><div class="kpi-label" id="pk-cap-label">Q admisible</div><div class="kpi-value" id="pk-qadm">—</div><div class="kpi-unit">tonf</div></div>
             </div>
             <div id="pil-detalle" style="margin-top:16px"></div>
           </div>
@@ -889,7 +1009,28 @@
         <!-- IZQUIERDA: entradas -->
         <div style="display:flex;flex-direction:column;gap:20px">
           <div class="card">
-            <div class="card-header"><div class="card-title">Columna y cargas</div></div>
+            <div class="card-header"><div class="card-title">Tipo de zapata</div></div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">Tipo</label>
+                <select id="zap_tipo" class="input">
+                  <option value="aislada" selected>Aislada (una columna)</option>
+                  <option value="combinada">Combinada (dos columnas)</option>
+                  <option value="conectada">Conectada / medianera (viga de enlace)</option>
+                  <option value="triangular">Triangular (especial)</option>
+                </select>
+              </div>
+              <div class="field ztipo-cond" data-ztipo="aislada"><label class="field-label">Forma</label>
+                <select id="zap_forma" class="input">
+                  <option value="cuadrada" selected>Cuadrada</option>
+                  <option value="rectangular">Rectangular</option>
+                </select>
+              </div>
+            </div>
+            <div class="hint" id="zap-tipo-hint" style="margin-top:2px"></div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><div class="card-title" id="zap-col1-title">Columna y cargas</div></div>
             <div class="field-row">
               <div class="field"><label class="field-label">Columna c1 <span class="unit">m</span></label>
                 <input type="number" id="zap_c1" data-mag="length" class="input" value="0.40" step="0.05"></div>
@@ -899,8 +1040,13 @@
             <div class="field-row">
               <div class="field"><label class="field-label">Carga de servicio P <span class="unit">tonf</span></label>
                 <input type="number" id="zap_P" data-mag="force" class="input" value="100" step="5"></div>
-              <div class="field"><label class="field-label">Momento M <span class="unit">tonf·m</span></label>
+              <div class="field"><label class="field-label">Momento M<sub>x</sub> <span class="unit">tonf·m</span></label>
                 <input type="number" id="zap_M" data-mag="moment" class="input" value="0" step="1"></div>
+            </div>
+            <div class="field-row ztipo-cond" data-ztipo="aislada conectada">
+              <div class="field"><label class="field-label">Momento M<sub>y</sub> (biaxial, opc.) <span class="unit">tonf·m</span></label>
+                <input type="number" id="zap_My" data-mag="moment" class="input" value="0" step="1"></div>
+              <div class="field"></div>
             </div>
             <div class="field-row">
               <div class="field"><label class="field-label">Carga última P<sub>u</sub> <span class="unit">tonf (opc.)</span></label>
@@ -908,6 +1054,45 @@
               <div class="field"><label class="field-label">Factor de carga</label>
                 <input type="number" id="zap_fcarga" class="input" value="1.5" step="0.1"></div>
             </div>
+            <div class="field ztipo-cond" data-ztipo="conectada" style="max-width:380px">
+              <label class="field-label" style="font-weight:400">
+                <input type="checkbox" id="zap_viga" checked style="width:auto"> Con viga de enlace (centradora) — recomendado
+              </label>
+            </div>
+          </div>
+
+          <!-- Segunda columna (solo combinada) -->
+          <div class="card ztipo-cond" data-ztipo="combinada">
+            <div class="card-header"><div class="card-title">Segunda columna y separación</div></div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">Columna 2 · c1 <span class="unit">m</span></label>
+                <input type="number" id="zap_c1b" data-mag="length" class="input" value="0.40" step="0.05"></div>
+              <div class="field"><label class="field-label">Columna 2 · c2 <span class="unit">m</span></label>
+                <input type="number" id="zap_c2b" data-mag="length" class="input" value="0.40" step="0.05"></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">Carga columna 2 · P2 <span class="unit">tonf</span></label>
+                <input type="number" id="zap_P2" data-mag="force" class="input" value="120" step="5"></div>
+              <div class="field"><label class="field-label">Separación entre columnas <span class="unit">m</span></label>
+                <input type="number" id="zap_sep" data-mag="length" class="input" value="4.50" step="0.05"></div>
+            </div>
+            <div class="field" style="max-width:340px">
+              <label class="field-label" style="font-weight:400">
+                <input type="checkbox" id="zap_mediz" checked style="width:auto"> Columna 1 sobre medianería (borde)
+              </label>
+            </div>
+          </div>
+
+          <!-- Geometría triangular (solo triangular) -->
+          <div class="card ztipo-cond" data-ztipo="triangular">
+            <div class="card-header"><div class="card-title">Geometría triangular (opcional)</div></div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">Base <span class="unit">m</span></label>
+                <input type="number" id="zap_base" data-mag="length" class="input" placeholder="auto" step="0.05"></div>
+              <div class="field"><label class="field-label">Altura <span class="unit">m</span></label>
+                <input type="number" id="zap_altura" data-mag="length" class="input" placeholder="auto" step="0.05"></div>
+            </div>
+            <div class="hint mt-3">Columna en el baricentro. Deja vacío para dimensionar automáticamente.</div>
           </div>
 
           <div class="card">
@@ -958,9 +1143,11 @@
               <div class="field"><label class="field-label">Largo L <span class="unit">m</span></label>
                 <input type="number" id="zap_L" data-mag="length" class="input" placeholder="auto" step="0.05"></div>
             </div>
-            <div class="field" style="max-width:260px">
-              <label class="field-label">Espesor h <span class="unit">m</span></label>
-              <input type="number" id="zap_h" data-mag="length" class="input" placeholder="auto" step="0.05">
+            <div class="field-row">
+              <div class="field"><label class="field-label">Espesor h <span class="unit">m</span></label>
+                <input type="number" id="zap_h" data-mag="length" class="input" placeholder="auto" step="0.05"></div>
+              <div class="field zforma-cond" data-zforma="rectangular"><label class="field-label">Relación L/B</label>
+                <input type="number" id="zap_relLB" class="input" value="1.5" step="0.1" min="1"></div>
             </div>
             <div class="hint mt-3">Deja B, L y h vacíos para que CimX dimensione automáticamente.</div>
           </div>
@@ -1020,6 +1207,412 @@
       </div>
     </section>
 
+    <!-- ===== VISTA: PLACA MACIZA (diseño) ===== -->
+    <section class="view" data-view="placa" data-module="placa">
+      <div class="view-header">
+        <div>
+          <div class="view-title">Diseño de Placa maciza</div>
+          <div class="view-subtitle">Losa de cimentación maciza (mat) — método rígido convencional · NSR-10 / ACI 318</div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start">
+        <!-- IZQUIERDA: entradas -->
+        <div style="display:flex;flex-direction:column;gap:20px">
+          <div class="card">
+            <div class="card-header"><div class="card-title">Malla de columnas</div></div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">Columnas en X (n<sub>x</sub>)</label>
+                <input type="number" id="pl_nx" class="input" value="3" step="1" min="1"></div>
+              <div class="field"><label class="field-label">Columnas en Y (n<sub>y</sub>)</label>
+                <input type="number" id="pl_ny" class="input" value="3" step="1" min="1"></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">Separación s<sub>x</sub> <span class="unit">m</span></label>
+                <input type="number" id="pl_sx" data-mag="length" class="input" value="5.0" step="0.25"></div>
+              <div class="field"><label class="field-label">Separación s<sub>y</sub> <span class="unit">m</span></label>
+                <input type="number" id="pl_sy" data-mag="length" class="input" value="5.0" step="0.25"></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">Carga por columna P <span class="unit">tonf</span></label>
+                <input type="number" id="pl_P" data-mag="force" class="input" value="90" step="5"></div>
+              <div class="field"><label class="field-label">Factor de carga</label>
+                <input type="number" id="pl_fcarga" class="input" value="1.5" step="0.1"></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">Columna c1 <span class="unit">m</span></label>
+                <input type="number" id="pl_c1" data-mag="length" class="input" value="0.50" step="0.05"></div>
+              <div class="field"><label class="field-label">Columna c2 <span class="unit">m</span></label>
+                <input type="number" id="pl_c2" data-mag="length" class="input" value="0.50" step="0.05"></div>
+            </div>
+            <div class="hint mt-3">Malla regular n<sub>x</sub>×n<sub>y</sub> con la misma carga por columna. El voladizo perimetral se agrega abajo.</div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><div class="card-title">Suelo y capacidad portante</div></div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">q admisible <span class="unit">tonf/m²</span></label>
+                <input type="number" id="pl_qadm" data-mag="pressure" class="input" value="25" step="1"></div>
+              <div class="field"><label class="field-label">Voladizo perimetral <span class="unit">m</span></label>
+                <input type="number" id="pl_vol" data-mag="length" class="input" value="0.60" step="0.05"></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">Profundidad D<sub>f</sub> <span class="unit">m</span></label>
+                <input type="number" id="pl_Df" data-mag="length" class="input" value="1.5" step="0.1"></div>
+              <div class="field"><label class="field-label">γ suelo <span class="unit">tonf/m³</span></label>
+                <input type="number" id="pl_gs" data-mag="gamma" class="input" value="1.80" step="0.05"></div>
+            </div>
+            <div class="field" style="max-width:260px"><label class="field-label">γ concreto <span class="unit">tonf/m³</span></label>
+              <input type="number" id="pl_gc" data-mag="gamma" class="input" value="2.40" step="0.05"></div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><div class="card-title">Materiales y refuerzo</div></div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">f'c <span class="unit">kgf/cm²</span></label>
+                <input type="number" id="pl_fc" data-mag="stress" class="input" value="280" step="5"></div>
+              <div class="field"><label class="field-label">fy <span class="unit">kgf/cm²</span></label>
+                <input type="number" id="pl_fy" data-mag="stress" class="input" value="4200" step="100"></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">Ø barra <span class="unit">mm</span></label>
+                <input type="number" id="pl_db" class="input" value="19.05" step="0.1"></div>
+              <div class="field"><label class="field-label">Recubrimiento <span class="unit">m</span></label>
+                <input type="number" id="pl_rec" data-mag="length" class="input" value="0.075" step="0.005"></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><div class="card-title">Dimensiones (opcional)</div></div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">Losa B <span class="unit">m</span></label>
+                <input type="number" id="pl_B" data-mag="length" class="input" placeholder="auto" step="0.05"></div>
+              <div class="field"><label class="field-label">Losa L <span class="unit">m</span></label>
+                <input type="number" id="pl_L" data-mag="length" class="input" placeholder="auto" step="0.05"></div>
+            </div>
+            <div class="field" style="max-width:260px"><label class="field-label">Espesor h <span class="unit">m</span></label>
+              <input type="number" id="pl_h" data-mag="length" class="input" placeholder="auto" step="0.05"></div>
+            <div class="hint mt-3">Deja B, L y h vacíos para dimensionar automáticamente (planta por la malla + voladizo; h por punzonamiento y cortante).</div>
+          </div>
+        </div>
+
+        <!-- DERECHA: resultados + esquema -->
+        <div style="display:flex;flex-direction:column;gap:20px">
+          <div class="card">
+            <div class="card-header"><div class="card-title">Resultados</div></div>
+            <div class="kpi-grid" id="placa-kpis" style="grid-template-columns:1fr 1fr 1fr">
+              <div class="kpi"><div class="kpi-label">Losa B×L</div><div class="kpi-value" id="pk-bl">—</div><div class="kpi-unit">m</div></div>
+              <div class="kpi"><div class="kpi-label">Espesor h</div><div class="kpi-value" id="pk-h">—</div><div class="kpi-unit">m</div></div>
+              <div class="kpi"><div class="kpi-label">Peralte d</div><div class="kpi-value" id="pk-d">—</div><div class="kpi-unit">m</div></div>
+              <div class="kpi"><div class="kpi-label">q máx</div><div class="kpi-value" id="pk-q">—</div><div class="kpi-unit">tonf/m²</div></div>
+              <div class="kpi"><div class="kpi-label">Punz. máx</div><div class="kpi-value" id="pk-punz">—</div><div class="kpi-unit">D/C</div></div>
+              <div class="kpi"><div class="kpi-label">Acero (franja mayor)</div><div class="kpi-value" id="pk-as">—</div><div class="kpi-unit">cm²</div></div>
+            </div>
+            <div id="placa-detalle" style="margin-top:16px"></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div class="card-title">Esquema — planta y presiones</div></div>
+            <div class="preview-frame" id="placa-preview" style="min-height:420px">
+              <div style="padding:36px;text-align:center;color:var(--text-muted)">Presiona "Calcular" para ver el dimensionamiento y el esquema.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== VISTA: PLACA MEMORIA ===== -->
+    <section class="view" data-view="placareport" data-module="placa">
+      <div class="view-header">
+        <div>
+          <div class="view-title">Memoria de cálculo</div>
+          <div class="view-subtitle">Reporte PDF de la placa maciza</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">Generar memoria</div></div>
+        <p style="color:var(--text-secondary);line-height:1.6;margin:0 0 16px">
+          Genera un documento PDF con la malla de columnas, el esquema en planta con las presiones de
+          contacto, los diagramas de momento de las franjas de diseño, el dimensionamiento geotécnico
+          por el <b>método rígido</b> (presiones biaxiales) y el diseño estructural (punzonamiento por
+          columna y flexión por franjas). Usa los datos cargados en <b>Diseño de Placa</b> y en
+          <b>Datos del Proyecto</b>.
+        </p>
+        <button class="btn btn-primary" id="btn-placa-pdf-2" type="button">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span>Generar memoria (PDF)</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- ===== VISTA: CAISSON (diseño) ===== -->
+    <section class="view" data-view="caisson" data-module="caisson">
+      <div class="view-header">
+        <div>
+          <div class="view-title">Diseño del Caisson</div>
+          <div class="view-subtitle">Pila excavada de gran diámetro (drilled shaft) — capacidad axial y diseño estructural</div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start">
+        <!-- IZQUIERDA: entradas -->
+        <div style="display:flex;flex-direction:column;gap:20px">
+          <div class="card">
+            <div class="card-header"><div class="card-title">Norma de diseño</div></div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">Norma</label>
+                <select id="cai_norma" class="input">
+                  <option value="NSR10" selected>NSR-10 — esfuerzos admisibles (FS)</option>
+                  <option value="CCP14">CCP-14 / AASHTO LRFD (φ · Sección 10.8)</option>
+                </select>
+              </div>
+              <div class="field cai-norma-cond" data-norma="NSR10"><label class="field-label">Factor de seguridad FS</label>
+                <input type="number" id="cai_FS" class="input" value="3.0" step="0.1"></div>
+              <div class="field cai-norma-cond" data-norma="CCP14"><label class="field-label">Factor de carga (→ P<sub>u</sub>)</label>
+                <input type="number" id="cai_fcarga" class="input" value="1.6" step="0.05"></div>
+            </div>
+            <div class="hint" id="cai-norma-hint" style="margin-top:2px"></div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><div class="card-title">Geometría de la pila</div></div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">Diámetro D <span class="unit">m</span></label>
+                <input type="number" id="cai_D" data-mag="length" class="input" value="1.20" step="0.05"></div>
+              <div class="field"><label class="field-label">Longitud L <span class="unit">m</span></label>
+                <input type="number" id="cai_L" data-mag="length" class="input" value="14.0" step="0.5" placeholder="auto"></div>
+            </div>
+            <div class="field" style="max-width:340px">
+              <label class="field-label" style="font-weight:400">
+                <input type="checkbox" id="cai_Lauto" style="width:auto"> Dimensionar L automáticamente
+              </label>
+            </div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">Campana Ø base <span class="unit">m (opc.)</span></label>
+                <input type="number" id="cai_Dcamp" data-mag="length" class="input" placeholder="sin campana" step="0.05"></div>
+              <div class="field"><label class="field-label">Altura campana <span class="unit">m</span></label>
+                <input type="number" id="cai_hcamp" data-mag="length" class="input" placeholder="0" step="0.05"></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><div class="card-title">Cargas</div></div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">Carga de servicio P <span class="unit">tonf</span></label>
+                <input type="number" id="cai_P" data-mag="force" class="input" value="300" step="10"></div>
+              <div class="field"><label class="field-label">P<sub>u</sub> mayorada <span class="unit">tonf (opc.)</span></label>
+                <input type="number" id="cai_Pu" data-mag="force" class="input" placeholder="(vacío = factor)" step="10"></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+              <div class="card-title">Perfil de suelo</div>
+              <button type="button" class="btn btn-secondary" id="cai-add-estrato" style="padding:4px 10px;font-size:12px">+ Estrato</button>
+            </div>
+            <table class="pil-table" id="cai-estratos-tabla" style="width:100%">
+              <thead><tr>
+                <th>Tipo</th><th>Espesor (m)</th><th>φ (°)</th><th>c<sub>u</sub> (tonf/m²)</th><th>γ (tonf/m³)</th><th></th>
+              </tr></thead>
+              <tbody id="cai-estratos"></tbody>
+            </table>
+            <div class="field" style="max-width:260px;margin-top:10px"><label class="field-label">Nivel freático <span class="unit">m</span></label>
+              <input type="number" id="cai_nf" data-mag="length" class="input" value="4.0" step="0.5" placeholder="profundo"></div>
+            <div class="hint mt-3">Arenas → fricción β y punta N<sub>q</sub>; arcillas → fricción α y punta 9·c<sub>u</sub> (O'Neill &amp; Reese / FHWA). La punta se evalúa en el estrato del fondo. <b>γ es el peso unitario in-situ del estrato</b>: bajo el nivel freático usa el saturado (abajo del N.F. se aplica γ − γ<sub>w</sub>).</div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><div class="card-title">Materiales y refuerzo</div></div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">f'c <span class="unit">kgf/cm²</span></label>
+                <input type="number" id="cai_fc" data-mag="stress" class="input" value="280" step="5"></div>
+              <div class="field"><label class="field-label">fy <span class="unit">kgf/cm²</span></label>
+                <input type="number" id="cai_fy" data-mag="stress" class="input" value="4200" step="100"></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">Cuantía ρ</label>
+                <input type="number" id="cai_rho" class="input" value="0.01" step="0.001"></div>
+              <div class="field"><label class="field-label">Refuerzo transversal</label>
+                <select id="cai_reftr" class="input">
+                  <option value="espiral" selected>Espiral / zuncho</option>
+                  <option value="estribo">Estribos</option>
+                </select></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">Ø barra long. <span class="unit">mm</span></label>
+                <input type="number" id="cai_dbl" class="input" value="25.4" step="0.1"></div>
+              <div class="field"><label class="field-label">Recubrimiento <span class="unit">m</span></label>
+                <input type="number" id="cai_rec" data-mag="length" class="input" value="0.075" step="0.005"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- DERECHA: resultados + esquema -->
+        <div style="display:flex;flex-direction:column;gap:20px">
+          <div class="card">
+            <div class="card-header"><div class="card-title">Resultados <span class="norma-badge" id="cai-norma-badge"></span></div></div>
+            <div class="kpi-grid" id="caisson-kpis" style="grid-template-columns:1fr 1fr 1fr">
+              <div class="kpi"><div class="kpi-label">Ø × L</div><div class="kpi-value" id="ck-dl">—</div><div class="kpi-unit">m</div></div>
+              <div class="kpi"><div class="kpi-label">Q última</div><div class="kpi-value" id="ck-qult">—</div><div class="kpi-unit">tonf</div></div>
+              <div class="kpi"><div class="kpi-label" id="ck-cap-label">Q admisible</div><div class="kpi-value" id="ck-cap">—</div><div class="kpi-unit">tonf</div></div>
+              <div class="kpi"><div class="kpi-label">D/C geotécnico</div><div class="kpi-value" id="ck-dcgeo">—</div><div class="kpi-unit">—</div></div>
+              <div class="kpi"><div class="kpi-label">φP<sub>n</sub></div><div class="kpi-value" id="ck-phipn">—</div><div class="kpi-unit">tonf</div></div>
+              <div class="kpi"><div class="kpi-label">D/C estructural</div><div class="kpi-value" id="ck-dcest">—</div><div class="kpi-unit">—</div></div>
+            </div>
+            <div id="caisson-detalle" style="margin-top:16px"></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div class="card-title">Esquema — elevación y perfil</div></div>
+            <div class="preview-frame" id="caisson-preview" style="min-height:440px">
+              <div style="padding:36px;text-align:center;color:var(--text-muted)">Presiona "Calcular" para ver la capacidad y el esquema.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== VISTA: CAISSON MEMORIA ===== -->
+    <section class="view" data-view="caissonreport" data-module="caisson">
+      <div class="view-header">
+        <div>
+          <div class="view-title">Memoria de cálculo</div>
+          <div class="view-subtitle">Reporte PDF del caisson / pila excavada</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">Generar memoria</div></div>
+        <p style="color:var(--text-secondary);line-height:1.6;margin:0 0 16px">
+          Genera un PDF con la geometría, el perfil de suelo, la capacidad axial (fricción β/α por estrato +
+          punta con campana), la verificación geotécnica por la norma elegida (NSR-10 con FS o CCP-14 con φ) y
+          el diseño estructural como columna. Usa los datos de <b>Diseño del Caisson</b> y de <b>Datos del Proyecto</b>.
+        </p>
+        <button class="btn btn-primary" id="btn-caisson-pdf-2" type="button">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span>Generar memoria (PDF)</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- ===== VISTA: MÁQUINA (diseño) ===== -->
+    <section class="view" data-view="maquina" data-module="maquina">
+      <div class="view-header">
+        <div>
+          <div class="view-title">Cimentación de máquina</div>
+          <div class="view-subtitle">Bloque para maquinaria dinámica — análisis por parámetros concentrados · ACI 351.3R</div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start">
+        <!-- IZQUIERDA: entradas -->
+        <div style="display:flex;flex-direction:column;gap:20px">
+          <div class="card">
+            <div class="card-header"><div class="card-title">Bloque de cimentación</div></div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">Ancho B <span class="unit">m</span></label>
+                <input type="number" id="maq_B" data-mag="length" class="input" value="5.0" step="0.1"></div>
+              <div class="field"><label class="field-label">Largo L <span class="unit">m</span></label>
+                <input type="number" id="maq_L" data-mag="length" class="input" value="4.0" step="0.1"></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">Espesor h <span class="unit">m</span></label>
+                <input type="number" id="maq_h" data-mag="length" class="input" value="1.5" step="0.1"></div>
+              <div class="field"><label class="field-label">γ concreto <span class="unit">tonf/m³</span></label>
+                <input type="number" id="maq_gc" data-mag="gamma" class="input" value="2.40" step="0.05"></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><div class="card-title">Máquina y excitación</div></div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">Peso de la máquina <span class="unit">tonf</span></label>
+                <input type="number" id="maq_peso" data-mag="force" class="input" value="12" step="1"></div>
+              <div class="field"><label class="field-label">Velocidad <span class="unit">rpm</span></label>
+                <input type="number" id="maq_rpm" class="input" value="750" step="10"></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">Fuerza de desbalance F₀ <span class="unit">tonf</span></label>
+                <input type="number" id="maq_F0" data-mag="force" class="input" value="1.2" step="0.1"></div>
+              <div class="field"><label class="field-label">Altura CG máquina <span class="unit">m</span></label>
+                <input type="number" id="maq_hcg" data-mag="length" class="input" value="1.8" step="0.1"></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">Masa excéntrica·e <span class="unit">kg·m (opc.)</span></label>
+                <input type="number" id="maq_mee" class="input" placeholder="(o usar F₀)" step="1"></div>
+              <div class="field"><label class="field-label">Torque dinámico <span class="unit">tonf·m (opc.)</span></label>
+                <input type="number" id="maq_torque" data-mag="moment" class="input" placeholder="0" step="0.5"></div>
+            </div>
+            <div class="hint mt-3">F₀ es la fuerza dinámica de desbalance a la velocidad de operación. Si das masa·excentricidad, F₀ = m<sub>e</sub>·e·ω².</div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><div class="card-title">Suelo (rigidez dinámica)</div></div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">Módulo de corte G <span class="unit">MPa</span></label>
+                <input type="number" id="maq_G" class="input" value="90" step="5"></div>
+              <div class="field"><label class="field-label">o Vs onda de corte <span class="unit">m/s (opc.)</span></label>
+                <input type="number" id="maq_Vs" class="input" placeholder="(o usar G)" step="10"></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">Relación de Poisson ν</label>
+                <input type="number" id="maq_nu" class="input" value="0.35" step="0.01"></div>
+              <div class="field"><label class="field-label">γ suelo <span class="unit">tonf/m³</span></label>
+                <input type="number" id="maq_gs" data-mag="gamma" class="input" value="1.90" step="0.05"></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">q admisible <span class="unit">tonf/m²</span></label>
+                <input type="number" id="maq_qadm" data-mag="pressure" class="input" value="25" step="1"></div>
+              <div class="field"><label class="field-label">Amplitud admisible <span class="unit">µm</span></label>
+                <input type="number" id="maq_ampadm" class="input" value="50" step="5"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- DERECHA: resultados + esquema -->
+        <div style="display:flex;flex-direction:column;gap:20px">
+          <div class="card">
+            <div class="card-header"><div class="card-title">Resultados</div></div>
+            <div class="kpi-grid" id="maquina-kpis" style="grid-template-columns:1fr 1fr 1fr">
+              <div class="kpi"><div class="kpi-label">Peso total</div><div class="kpi-value" id="mk-peso">—</div><div class="kpi-unit">tonf</div></div>
+              <div class="kpi"><div class="kpi-label">Rel. masa</div><div class="kpi-value" id="mk-relmasa">—</div><div class="kpi-unit">bloque/máq</div></div>
+              <div class="kpi"><div class="kpi-label">f operación</div><div class="kpi-value" id="mk-fop">—</div><div class="kpi-unit">Hz</div></div>
+              <div class="kpi"><div class="kpi-label">Amplitud máx</div><div class="kpi-value" id="mk-amp">—</div><div class="kpi-unit">µm</div></div>
+              <div class="kpi"><div class="kpi-label">Resonancia</div><div class="kpi-value" id="mk-reson">—</div><div class="kpi-unit">separación</div></div>
+              <div class="kpi"><div class="kpi-label">Presión</div><div class="kpi-value" id="mk-q">—</div><div class="kpi-unit">tonf/m²</div></div>
+            </div>
+            <div id="maquina-detalle" style="margin-top:16px"></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div class="card-title">Sintonización — fₙ por modo vs. operación</div></div>
+            <div class="preview-frame" id="maquina-preview" style="min-height:360px">
+              <div style="padding:36px;text-align:center;color:var(--text-muted)">Presiona "Calcular" para ver las frecuencias y la respuesta.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== VISTA: MÁQUINA MEMORIA ===== -->
+    <section class="view" data-view="maquinareport" data-module="maquina">
+      <div class="view-header">
+        <div>
+          <div class="view-title">Memoria de cálculo</div>
+          <div class="view-subtitle">Reporte PDF de la cimentación de máquina</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">Generar memoria</div></div>
+        <p style="color:var(--text-secondary);line-height:1.6;margin:0 0 16px">
+          Genera un PDF con los datos del bloque, la máquina y el suelo, el diagrama de sintonización, la
+          respuesta dinámica de los cuatro modos (vertical, horizontal, cabeceo y torsión) por el método de
+          parámetros concentrados de <b>ACI 351.3R</b>, y la verificación de resonancia, amplitud y presión
+          estática. Usa los datos de <b>Diseño de Máquina</b> y de <b>Datos del Proyecto</b>.
+        </p>
+        <button class="btn btn-primary" id="btn-maq-pdf-2" type="button">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span>Generar memoria (PDF)</span>
+        </button>
+      </div>
+    </section>
+
     <!-- ===== VISTA: DADO (diseño) ===== -->
     <section class="view" data-view="dado" data-module="dado">
       <div class="view-header">
@@ -1032,6 +1625,17 @@
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start">
         <!-- IZQUIERDA: entradas -->
         <div style="display:flex;flex-direction:column;gap:20px">
+          <div class="card">
+            <div class="card-header"><div class="card-title">Norma de diseño</div></div>
+            <div class="field" style="max-width:360px"><label class="field-label">Norma</label>
+              <select id="dado_norma" class="input">
+                <option value="NSR10" selected>NSR-10 / ACI 318 (φ_cortante 0.75, peralte d)</option>
+                <option value="CCP14">CCP-14 / AASHTO LRFD (φ_cortante 0.90, dv, Mcr)</option>
+              </select>
+            </div>
+            <div class="hint" id="dado-norma-hint" style="margin-top:6px"></div>
+          </div>
+
           <div class="card">
             <div class="card-header"><div class="card-title">Pilotes y grupo</div></div>
             <div class="field-row">
@@ -1185,10 +1789,14 @@
 <script src="{{ url_for('static', filename='js/pilote_3d.js') }}"></script>
 <script src="{{ url_for('static', filename='js/zapata_3d.js') }}"></script>
 <script src="{{ url_for('static', filename='js/dado_3d.js') }}"></script>
+<script src="{{ url_for('static', filename='js/vendor/pdf.min.js') }}"></script>
 <script src="{{ url_for('static', filename='js/pdf_modal.js') }}"></script>
 <script src="{{ url_for('static', filename='js/cimx.js') }}"></script>
 <script src="{{ url_for('static', filename='js/pilotes.js') }}"></script>
 <script src="{{ url_for('static', filename='js/zapatas.js') }}"></script>
+<script src="{{ url_for('static', filename='js/placas.js') }}"></script>
+<script src="{{ url_for('static', filename='js/caissons.js') }}"></script>
+<script src="{{ url_for('static', filename='js/maquinas.js') }}"></script>
 <script src="{{ url_for('static', filename='js/dado.js') }}"></script>
 <script src="{{ url_for('static', filename='js/proyecto.js') }}"></script>
 </body>

@@ -22,14 +22,21 @@ if (require('electron-squirrel-startup')) {
   app.quit();
 }
 
-// En entornos con GPU restringida (escritorio remoto, máquinas virtuales o
-// drivers sin aceleración) el proceso de GPU de Chromium no arranca y Electron
-// aborta con «GPU process isn't usable. Goodbye.». Forzamos render por software
-// para que la ventana abra siempre. No afecta a equipos con GPU normal.
-app.disableHardwareAcceleration();
-app.commandLine.appendSwitch('disable-gpu');
+// En este entorno (unidad de red / equipo restringido) el PROCESO de GPU de
+// Chromium no puede lanzarse («GPU process launch failed: error_code=18 →
+// GPU process isn't usable. Goodbye.»). Deshabilitar la GPU del todo hacía que
+// la app arrancara, pero rompía WebGL y dejaba el visor 3D en blanco.
+//
+// Solución: ejecutar la GPU DENTRO del proceso principal (--in-process-gpu),
+// de modo que no haya un proceso separado que lanzar, y renderizar por SOFTWARE
+// con SwiftShader (vía ANGLE). Así la ventana abre siempre —sin depender de una
+// GPU real ni de poder lanzar el proceso de GPU— y WebGL (Three.js) funciona.
+app.commandLine.appendSwitch('in-process-gpu');
+app.commandLine.appendSwitch('use-gl', 'angle');
+app.commandLine.appendSwitch('use-angle', 'swiftshader');
+app.commandLine.appendSwitch('enable-unsafe-swiftshader');  // WebGL por software (Chromium 126)
 app.commandLine.appendSwitch('disable-gpu-sandbox');
-app.commandLine.appendSwitch('disable-software-rasterizer');
+app.commandLine.appendSwitch('ignore-gpu-blocklist');
 
 const { initAutoUpdates } = require('./updater');
 const { spawn } = require('child_process');
@@ -219,6 +226,7 @@ function createWindow() {
       contextIsolation: true,    // aislamiento del contexto (seguridad)
       nodeIntegration: false,    // sin Node en el renderer
       sandbox: false,            // necesitamos `require` en el preload
+      plugins: true,             // habilita el visor de PDF de Chrome (iframe blob:)
     },
   });
 
@@ -314,7 +322,8 @@ function buildAppMenu() {
               title: 'Acerca de CimX',
               message: 'CimX v1.0.0',
               detail:
-                'Diseño de muros de contención conforme a la NSR-10 (Colombia).\n'
+                'Diseño de muros de contención conforme a la NSR-10 y a la\n'
+                + 'CCP-14 (LRFD-AASHTO), a elección del usuario.\n'
                 + '\n'
                 + 'Validado contra los ejemplos 8.1 y 8.2 de\n'
                 + 'Braja M. Das — "Fundamentos de ingeniería de cimentaciones".\n'

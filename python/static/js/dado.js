@@ -35,6 +35,7 @@ function dadRecolectar() {
     factor_peso: parseFloat($('#dado_fp').value) || 1.2,
     posicion: $('#dado_pos').value,
     metodo: ($('#dado_metodo') && $('#dado_metodo').value) || 'ambos',
+    norma: ($('#dado_norma') && $('#dado_norma').value) || 'NSR10',
   };
 }
 
@@ -117,7 +118,12 @@ function dadRender(res) {
   const avisos = (res.avisos && res.avisos.length)
     ? `<div class="hint" style="border-color:var(--status-warn-bd);color:var(--status-warn-tx)">⚠ ${res.avisos.join('<br>⚠ ')}</div>` : '';
 
+  const normaTxt = (res.norma === 'CCP14')
+    ? `<span class="norma-badge">CCP-14 · LRFD</span> φ<sub>cortante</sub>=${e.phi_corte}, d<sub>v</sub>=${e.dv_m} m`
+    : `<span class="norma-badge">NSR-10 · ACI 318</span> φ<sub>cortante</sub>=${e.phi_corte}, peralte d`;
+
   $('#dado-detalle').innerHTML = `
+    <div class="pil-line">${normaTxt}</div>
     <div class="pil-line"><b>Geometría:</b> ${g.forma === 'tri' ? 'triangular' : 'rectangular'} ${g.Bx_m}×${g.Ly_m} m · h=${g.h_m} m · d=${g.d_m} m · <b>${g.clasificacion}</b> (m=${g.m_voladizo_m} m)</div>
     <div class="pil-line"><b>Reacciones (c/peso):</b> ${reac} tonf</div>
     <div class="pil-line"><b>R<sub>máx</sub> pilote:</b> ${_dtf(c.Pmax_kN).toFixed(1)} / ${capTxt} → ${ok(c.cumple_pilote)} (D/C=${c.ratio_pilote != null ? c.ratio_pilote : '—'})</div>
@@ -415,6 +421,18 @@ document.addEventListener('DOMContentLoaded', () => {
   // Toggle 2D / 3D del esquema
   $$('[data-vista-dado]').forEach(b =>
     b.addEventListener('click', () => setVistaDado(b.getAttribute('data-vista-dado'))));
+
+  // Selector de norma → nota
+  const selN = $('#dado_norma');
+  const setNormaHint = () => {
+    const h = $('#dado-norma-hint');
+    if (!h) return;
+    h.innerHTML = (selN && selN.value === 'CCP14')
+      ? 'CCP-14 / AASHTO §5: cortante φ=0.90, peralte d<sub>v</sub>=máx(0.9d, 0.72h), v<sub>c</sub> de dos términos y refuerzo mínimo por M<sub>cr</sub>.'
+      : 'NSR-10 / ACI 318: cortante φ=0.75, peralte d, v<sub>c</sub> de tres términos y refuerzo mínimo 0.0018·b·h.';
+  };
+  if (selN) selN.addEventListener('change', setNormaHint);
+  setNormaHint();
 
   window.dadCalcular = dadCalcular;
   window.dadMostrar = dadMostrar;

@@ -128,8 +128,29 @@ class ParametrosSismicosNSR10:
             return 0.0
         return 0.6 * self.A_max
 
-    def resumen(self) -> dict:
-        """Dict con todos los parámetros para reportar en tablas."""
+    def resumen(self, norma: str = "NSR10") -> dict:
+        """Dict con los parámetros sísmicos para reportar en tablas.
+
+        La nomenclatura se adapta a la norma:
+          - NSR-10: Aa, Av, Fa, Fv, A_max = Fa·Aa (Título A).
+          - CCP-14 (LRFD-AASHTO, Art. 3.10): los mismos valores calculados se
+            presentan como PGA, Fpga y As = Fpga·PGA (no se listan Av/Fv, que
+            son del espectro y no intervienen en el análisis Mononobe-Okabe del
+            muro). El coeficiente pico se toma de la misma zonación sísmica.
+        """
+        v = str(norma or "").upper().replace("-", "")
+        if v in ("CCP14", "CCP", "AASHTO", "LRFD", "LRFDCCP14"):
+            return {
+                "PGA (coef. de aceleración pico del terreno)": self.Aa,
+                "Clase de sitio": self.tipo_suelo.value,
+                "Fpga (factor de sitio para PGA)": round(self.Fa, 3),
+                "As = Fpga·PGA (g)": round(self.A_max, 3),
+                "kh (horizontal)": round(self.kh, 4),
+                "kv (vertical)": round(self.kv, 4),
+                "Método": ("Desplazamiento admisible — kh = As/2 (Richards-Elms)"
+                           if self.permite_desplazamiento
+                           else "Sin desplazamiento — kh = 0.6·As"),
+            }
         return {
             "Aa": self.Aa,
             "Av": self.Av,

@@ -102,27 +102,39 @@ def reacciones(coords, P, Mux=0.0, Muy=0.0):
 # ----------------------------------------------------------------------------
 # Punzonamiento (dos vías)
 # ----------------------------------------------------------------------------
-def _punz_columna(coords, R, c1, c2, d, sqrt_fc, P_col, posicion):
-    bo = 2.0 * (c1 + d) + 2.0 * (c2 + d)
-    hx = (c1 + d) / 2.0; hy = (c2 + d) / 2.0
+def _punz_columna(coords, R, c1, c2, d, sqrt_fc, P_col, posicion,
+                  phi_corte=PHI_CORTE, dv=None, ccp=False):
+    """Punzonamiento (dos vías) en la columna. ``dv`` = peralte de cortante
+    (CCP-14: max(0.9d,0.72h)); ``ccp`` cambia la fórmula de v_c a AASHTO."""
+    dsh = dv if dv else d
+    bo = 2.0 * (c1 + dsh) + 2.0 * (c2 + dsh)
+    hx = (c1 + dsh) / 2.0; hy = (c2 + dsh) / 2.0
     R_int = sum(r for (x, y), r in zip(coords, R) if abs(x) <= hx and abs(y) <= hy)
     Vu = P_col - R_int
     beta_c = max(c1, c2) / min(c1, c2)
-    alfa = _alpha_s(posicion)
-    vc = min(0.33 * sqrt_fc,
-             0.17 * (1.0 + 2.0 / beta_c) * sqrt_fc,
-             0.083 * (alfa * d / bo + 2.0) * sqrt_fc)
-    phiVc = PHI_CORTE * vc * 1000.0 * bo * d
+    if ccp:
+        # AASHTO/CCP-14 5.12.8.6.3 (SI, MPa): v_n = (0.17 + 0.33/βc)√f'c ≤ 0.33√f'c
+        vc = min((0.17 + 0.33 / beta_c) * sqrt_fc, 0.33 * sqrt_fc)
+    else:
+        alfa = _alpha_s(posicion)
+        vc = min(0.33 * sqrt_fc,
+                 0.17 * (1.0 + 2.0 / beta_c) * sqrt_fc,
+                 0.083 * (alfa * dsh / bo + 2.0) * sqrt_fc)
+    phiVc = phi_corte * vc * 1000.0 * bo * dsh
     return {"b0_m": round(bo, 4), "vc_MPa": round(vc, 3), "Vu_kN": round(Vu, 1),
             "phiVc_kN": round(phiVc, 1),
             "ratio": round(Vu / phiVc, 3) if phiVc > 0 else None,
             "cumple": Vu <= phiVc}
 
 
-def _punz_pilote(Dp, d, sqrt_fc, R_max):
-    bo = math.pi * (Dp + d)
-    vc = min(0.33 * sqrt_fc, 0.083 * (40.0 * d / bo + 2.0) * sqrt_fc)
-    phiVc = PHI_CORTE * vc * 1000.0 * bo * d
+def _punz_pilote(Dp, d, sqrt_fc, R_max, phi_corte=PHI_CORTE, dv=None, ccp=False):
+    dsh = dv if dv else d
+    bo = math.pi * (Dp + dsh)
+    if ccp:
+        vc = 0.33 * sqrt_fc                        # área circular βc≈1 → tope AASHTO (SI)
+    else:
+        vc = min(0.33 * sqrt_fc, 0.083 * (40.0 * dsh / bo + 2.0) * sqrt_fc)
+    phiVc = phi_corte * vc * 1000.0 * bo * dsh
     return {"b0_m": round(bo, 4), "vc_MPa": round(vc, 3), "Vu_kN": round(R_max, 1),
             "phiVc_kN": round(phiVc, 1),
             "ratio": round(R_max / phiVc, 3) if phiVc > 0 else None,
@@ -145,17 +157,23 @@ def _suma_lado(coords, R, eje, limite):
         return neg, brazo
 
 
-def _cortante_una_via(coords, R, eje, c_cara, d, b_ancho, sqrt_fc):
-    """Sección crítica a 'd' de la cara de la columna (a c/2 + d del centro)."""
-    Vu, _ = _suma_lado(coords, R, eje, c_cara / 2.0 + d)
-    phiVc = PHI_CORTE * 0.17 * sqrt_fc * 1000.0 * b_ancho * d
+def _cortante_una_via(coords, R, eje, c_cara, d, b_ancho, sqrt_fc,
+                      phi_corte=PHI_CORTE, dv=None, ccp=False):
+    """Sección crítica a 'd' de la cara de la columna (a c/2 + d del centro).
+    CCP-14: φ=0.90, V_c = 0.083·β·√f'c·b·dv con β=2 (≈0.166·√f'c·b·dv)."""
+    dsh = dv if dv else d
+    Vu, _ = _suma_lado(coords, R, eje, c_cara / 2.0 + dsh)   # sección crítica a dv (CCP) o d
+    coef = 0.166 if ccp else 0.17            # 0.083·β(=2) ≈ 0.166 (CCP) vs 0.17 (NSR)
+    phiVc = phi_corte * coef * sqrt_fc * 1000.0 * b_ancho * dsh
     return {"Vu_kN": round(Vu, 1), "phiVc_kN": round(phiVc, 1),
             "ratio": round(Vu / phiVc, 3) if phiVc > 0 else None,
             "cumple": Vu <= phiVc}
 
 
-def _flexion(coords, R, eje, c_cara, d, b_ancho, fc, fy, rec, db, h):
-    """Momento en la cara de la columna; acero repartido en b_ancho."""
+def _flexion(coords, R, eje, c_cara, d, b_ancho, fc, fy, rec, db, h, ccp=False):
+    """Momento en la cara de la columna; acero repartido en b_ancho.
+    Refuerzo mínimo: NSR-10 = 0.0018·b·h; CCP-14 = máx(As por min(1.33·Mu, Mcr),
+    0.0018·b·h) — la provisión por Mcr no elimina el piso de retracción/temperatura."""
     _, Mu = _suma_lado(coords, R, eje, c_cara / 2.0)         # kN·m
     Mu = max(Mu, 0.0)
     fy_k = fy * 1000.0; fc_k = fc * 1000.0
@@ -167,7 +185,18 @@ def _flexion(coords, R, eje, c_cara, d, b_ancho, fc, fy, rec, db, h):
             As = nuevo; break
         As = nuevo
     As_req = max(As, 0.0)
-    As_min = 0.0018 * b_ancho * h
+    As_temp = 0.0018 * b_ancho * h                          # retracción y temperatura (ambas normas)
+    if ccp:
+        # AASHTO/CCP-14 5.6.3.3: Mr ≥ min(1.33·Mu, Mcr), Mcr = γ3·γ1·fr·S; con Mu=0
+        # el mínimo por flexión es 0, pero se conserva el piso de retracción/temperatura.
+        fr = 0.62 * math.sqrt(fc) * 1000.0                  # kPa
+        S = b_ancho * h ** 2 / 6.0                          # módulo de sección
+        Mcr = 0.67 * 1.6 * fr * S
+        M_min = min(1.33 * Mu, Mcr)                         # = 0 cuando Mu = 0
+        As_flex_min = M_min / (PHI_FLEX * fy_k * 0.9 * d) if d > 0 else 0.0
+        As_min = max(As_flex_min, As_temp)
+    else:
+        As_min = As_temp
     As_fin = max(As_req, As_min)
     ab = _area_barra(db)
     nb = max(2, math.ceil(As_fin / ab)) if ab > 0 else 0
@@ -230,12 +259,26 @@ def disenar_dado(*, n_pilotes, Dp, c1, c2, Pu, Mux=0.0, Muy=0.0,
                  s=0.0, e=0.0, h=0.0, fc=21.0, fy=420.0,
                  recubrimiento=0.075, db=0.01905, db_col=0.01905,
                  capacidad_pilote=0.0, gamma_concreto=24.0,
-                 factor_peso=1.2, posicion="interior", metodo="ambos") -> dict:
+                 factor_peso=1.2, posicion="interior", metodo="ambos",
+                 norma="NSR10") -> dict:
     """Diseña (o verifica) un dado/cabezal sobre n_pilotes (1..6).
 
     metodo: acero inferior por 'flexion' (método seccional), 'bielas'
     (puntal-tensor) o 'ambos' (se adopta el mayor). Por defecto 'ambos'.
+
+    ``norma`` selecciona los factores y fórmulas de cortante/flexión:
+      - NSR-10 / ACI 318: φ_cortante = 0.75, v_c de tres términos, peralte d.
+      - CCP-14 / AASHTO LRFD (Sección 5): φ_cortante = 0.90, v_c de dos términos,
+        peralte de cortante dv = máx(0.9d, 0.72h), refuerzo mínimo por Mcr.
     """
+    from ..normas import NORMA_CCP14, normalizar_norma
+    norma = normalizar_norma(norma)
+    ccp = (norma == NORMA_CCP14)
+    phi_corte = 0.90 if ccp else PHI_CORTE
+
+    def _dv(dd, hh):
+        return max(0.9 * dd, 0.72 * hh) if ccp else dd
+
     metodo = (metodo or "ambos").lower()
     if metodo not in ("flexion", "bielas", "ambos"):
         metodo = "ambos"
@@ -258,11 +301,12 @@ def disenar_dado(*, n_pilotes, Dp, c1, c2, Pu, Mux=0.0, Muy=0.0,
         h = max(0.40, round(0.5 * Dp + 0.30, 2))
         for _ in range(80):
             d_ = max(0.05, h - recubrimiento - db)
+            dv_ = _dv(d_, h)
             R_ = reacciones(coords, Pu, Mux, Muy)
-            pc = _punz_columna(coords, R_, c1, c2, d_, sqrt_fc, Pu, posicion)
-            pp = _punz_pilote(Dp, d_, sqrt_fc, max(R_))
-            cvx = _cortante_una_via(coords, R_, "x", c1, d_, Ly, sqrt_fc)
-            cvy = _cortante_una_via(coords, R_, "y", c2, d_, Bx, sqrt_fc)
+            pc = _punz_columna(coords, R_, c1, c2, d_, sqrt_fc, Pu, posicion, phi_corte, dv_, ccp)
+            pp = _punz_pilote(Dp, d_, sqrt_fc, max(R_), phi_corte, dv_, ccp)
+            cvx = _cortante_una_via(coords, R_, "x", c1, d_, Ly, sqrt_fc, phi_corte, dv_, ccp)
+            cvy = _cortante_una_via(coords, R_, "y", c2, d_, Bx, sqrt_fc, phi_corte, dv_, ccp)
             if pc["cumple"] and pp["cumple"] and cvx["cumple"] and cvy["cumple"]:
                 break
             h = round(h + 0.05, 3)
@@ -286,12 +330,13 @@ def disenar_dado(*, n_pilotes, Dp, c1, c2, Pu, Mux=0.0, Muy=0.0,
                       "o revisar la excentricidad de la carga.")
 
     # ---- Chequeos estructurales ----
-    pc = _punz_columna(coords, R, c1, c2, d, sqrt_fc, Pu, posicion)
-    pp = _punz_pilote(Dp, d, sqrt_fc, max(R))
-    cvx = _cortante_una_via(coords, R, "x", c1, d, Ly, sqrt_fc)
-    cvy = _cortante_una_via(coords, R, "y", c2, d, Bx, sqrt_fc)
-    fx = _flexion(coords, R, "x", c1, d, Ly, fc, fy, recubrimiento, db, h)
-    fy_ = _flexion(coords, R, "y", c2, d, Bx, fc, fy, recubrimiento, db, h)
+    dv = _dv(d, h)
+    pc = _punz_columna(coords, R, c1, c2, d, sqrt_fc, Pu, posicion, phi_corte, dv, ccp)
+    pp = _punz_pilote(Dp, d, sqrt_fc, max(R), phi_corte, dv, ccp)
+    cvx = _cortante_una_via(coords, R, "x", c1, d, Ly, sqrt_fc, phi_corte, dv, ccp)
+    cvy = _cortante_una_via(coords, R, "y", c2, d, Bx, sqrt_fc, phi_corte, dv, ccp)
+    fx = _flexion(coords, R, "x", c1, d, Ly, fc, fy, recubrimiento, db, h, ccp)
+    fy_ = _flexion(coords, R, "y", c2, d, Bx, fc, fy, recubrimiento, db, h, ccp)
     biela = _biela(coords, R, forma, c1, c2, d, fy, db)
     ldc = _ldc(db_col, fy, fc)
 
@@ -330,6 +375,7 @@ def disenar_dado(*, n_pilotes, Dp, c1, c2, Pu, Mux=0.0, Muy=0.0,
     cumple = cumple_pilote and cumple_cortante
 
     return {
+        "norma": norma,
         "geometria": {
             "n_pilotes": n, "Dp_m": round(Dp, 3), "s_m": round(s, 3), "e_m": round(e, 3),
             "forma": forma, "Bx_m": round(Bx, 3), "Ly_m": round(Ly, 3),
@@ -349,7 +395,8 @@ def disenar_dado(*, n_pilotes, Dp, c1, c2, Pu, Mux=0.0, Muy=0.0,
             "cumple_pilote": cumple_pilote,
         },
         "estructural": {
-            "h_m": h, "d_m": d, "punz_columna": pc, "punz_pilote": pp,
+            "h_m": h, "d_m": d, "dv_m": round(dv, 4), "phi_corte": phi_corte,
+            "punz_columna": pc, "punz_pilote": pp,
             "cortante_x": cvx, "cortante_y": cvy, "flexion_x": fx, "flexion_y": fy_,
             "biela": biela, "ldc_columna_m": ldc, "metodo": metodo,
             "as_x_rec_cm2": round(as_x_rec, 2), "as_y_rec_cm2": round(as_y_rec, 2),

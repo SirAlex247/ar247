@@ -113,14 +113,28 @@ def _auto_h(B, L, c1, c2, qu, sqrt_fc, rec, db, posicion):
     return round(h, 3)
 
 
-def disenar_zapata(*, c1, c2, P_servicio, M_servicio=0.0, q_adm,
+def disenar_zapata(*, c1, c2, P_servicio, M_servicio=0.0, My_servicio=0.0, q_adm,
                    fc=21.0, fy=420.0, recubrimiento=0.075, db=0.01905,
                    B=0.0, L=0.0, h=0.0, Df=1.5,
                    gamma_suelo=18.0, gamma_concreto=24.0,
-                   Pu=0.0, factor_carga=1.5, posicion="interior") -> dict:
-    """Diseña (o verifica) una zapata aislada rectangular. Ver módulo para unidades."""
+                   Pu=0.0, factor_carga=1.5, posicion="interior",
+                   relacion_LB=1.0) -> dict:
+    """Diseña (o verifica) una zapata aislada rectangular.
+
+    Momentos de servicio:
+        M_servicio  (Mx): flexiona en la dirección de L → excentricidad e_L en L.
+        My_servicio (My): flexiona en la dirección de B → excentricidad e_B en B.
+    Con My=0 el comportamiento es el uniaxial de siempre (incluida la
+    redistribución triangular para e>L/6). Con My≠0 se usa la distribución
+    biaxial lineal de las 4 esquinas y se avisa si hay despegue (q_min<0).
+
+    ``relacion_LB`` (L/B) permite una planta rectangular en el auto-dimensionado
+    (1.0 = cuadrada, comportamiento previo). Ver módulo para unidades.
+    """
     sqrt_fc = math.sqrt(fc)
     avisos = []
+    relacion_LB = relacion_LB if relacion_LB and relacion_LB > 0 else 1.0
+    biaxial = abs(My_servicio) > 1e-9
 
     # ---------- Carga última ----------
     Pu = (factor_carga * P_servicio) if (not Pu or Pu <= 0) else Pu
@@ -133,19 +147,35 @@ def disenar_zapata(*, c1, c2, P_servicio, M_servicio=0.0, q_adm,
         Wz = gamma_concreto * A_ * h_
         Ws = gamma_suelo * A_ * max(0.0, Df - h_)
         Pt = P_servicio + Wz + Ws
-        e_ = (M_servicio / Pt) if Pt else 0.0
+        eL = (M_servicio / Pt) if Pt else 0.0     # excentricidad en L
+        eB = (My_servicio / Pt) if Pt else 0.0    # excentricidad en B
         qun = Pt / A_
-        if M_servicio and abs(e_) > 1e-9:
-            if abs(e_) <= L_ / 6.0 + 1e-9:
-                qmx = qun * (1.0 + 6.0 * abs(e_) / L_)
-                qmn = qun * (1.0 - 6.0 * abs(e_) / L_)
+        if biaxial:
+            # Distribución lineal biaxial (4 esquinas): q = P/A·(1 ± 6eL/L ± 6eB/B)
+            fL = 6.0 * abs(eL) / L_
+            fB = 6.0 * abs(eB) / B_
+            qmx = qun * (1.0 + fL + fB)
+            qmn = qun * (1.0 - fL - fB)
+            e_ = math.hypot(eL, eB)
+        elif M_servicio and abs(eL) > 1e-9:
+            e_ = eL
+            if abs(eL) <= L_ / 6.0 + 1e-9:
+                qmx = qun * (1.0 + 6.0 * abs(eL) / L_)
+                qmn = qun * (1.0 - 6.0 * abs(eL) / L_)
             else:
-                qmx = (2.0 * Pt / (3.0 * B_ * (L_ / 2.0 - abs(e_)))
-                       if (L_ / 2.0 - abs(e_)) > 0 else float("inf"))
+                qmx = (2.0 * Pt / (3.0 * B_ * (L_ / 2.0 - abs(eL)))
+                       if (L_ / 2.0 - abs(eL)) > 0 else float("inf"))
                 qmn = 0.0
         else:
+            e_ = 0.0
             qmx = qmn = qun
         return A_, Pt, e_, qun, qmx, qmn
+
+    def _plan_rect(A_req_):
+        """B×L rectangular a partir del área requerida y la relación L/B."""
+        B_ = _redondea_arriba(math.sqrt(A_req_ / relacion_LB), 0.05)
+        L_ = _redondea_arriba(B_ * relacion_LB, 0.05)
+        return B_, L_
 
     if auto_dim:
         # Iterar: área por presión NETA (descontando peso propio y sobrecarga) ↔ espesor por cortante
@@ -154,19 +184,19 @@ def disenar_zapata(*, c1, c2, P_servicio, M_servicio=0.0, q_adm,
             q_net = q_adm - gamma_concreto * h - gamma_suelo * max(0.0, Df - h)
             q_net = max(q_net, 0.05 * q_adm)
             A_req = P_servicio / q_net
-            B = L = _redondea_arriba(math.sqrt(A_req), 0.05)
+            B, L = _plan_rect(A_req)
             h_new = _auto_h(B, L, c1, c2, Pu / (B * L), sqrt_fc, recubrimiento, db, posicion)
             if abs(h_new - h) < 0.03:
                 h = h_new
                 break
             h = h_new
-        # Si hay momento/peso que excede la admisible, crecer la planta
+        # Si hay momento/peso que excede la admisible, crecer la planta (manteniendo L/B)
         for _ in range(150):
             _, _, _, _, qmx_t, _ = pesos_y_presiones(B, L, h)
             if qmx_t <= q_adm * 1.001 or B > 25:
                 break
             B = round(B + 0.05, 3)
-            L = round(L + 0.05, 3)
+            L = round(B * relacion_LB, 3)
         h = _auto_h(B, L, c1, c2, Pu / (B * L), sqrt_fc, recubrimiento, db, posicion)
         q_net_f = max(q_adm - gamma_concreto * h - gamma_suelo * max(0.0, Df - h), 0.05 * q_adm)
         A_req = P_servicio / q_net_f
@@ -180,10 +210,11 @@ def disenar_zapata(*, c1, c2, P_servicio, M_servicio=0.0, q_adm,
     qu = Pu / A
 
     cumple_geo = (q_max <= q_adm * 1.001) and (q_min >= -1e-6)
-    if not cumple_geo:
+    if q_max > q_adm * 1.001:
         avisos.append("La presión de contacto supera la admisible: aumenta B×L o q_adm.")
-    if M_servicio and abs(e) > L / 6.0 + 1e-9:
-        avisos.append("Excentricidad fuera del tercio medio (e > L/6): hay despegue del suelo.")
+    if q_min < -1e-6:
+        avisos.append("Hay despegue del suelo (q_mín < 0): la resultante sale del "
+                      "núcleo central. Aumenta la planta o añade viga de rigidez.")
 
     # ---------- Chequeos de cortante (finales) ----------
     cdv = _cortante_dos_vias(B, L, h, c1, c2, qu, sqrt_fc, recubrimiento, db, posicion)

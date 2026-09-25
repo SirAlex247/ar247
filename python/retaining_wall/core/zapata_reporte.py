@@ -16,7 +16,7 @@ from datetime import date
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from matplotlib.patches import Rectangle
+from matplotlib.patches import Rectangle, Polygon
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
@@ -65,15 +65,16 @@ def dibujar_zapata(res, entradas) -> "plt.Figure":
         Df = h + 0.4
     qu_t = e["qu_kPa"] / G
 
-    C = {"concreto": "#7f8a93", "col": "#9aa6ae", "suelo": "#d8bd86",
-         "acero": "#d97a2b"}
+    C = {"concreto": "#7f8a93", "hatch": "#333b45", "col": "#9aa6ae",
+         "suelo": "#d8bd86", "acero": "#d97a2b"}
+    plt.rcParams["hatch.linewidth"] = 0.5
 
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(5.4, 7.4),
                                    gridspec_kw={"height_ratios": [1.0, 1.0]})
 
     # ---------------- PLANTA ----------------
     ax1.add_patch(Rectangle((-B / 2, -L / 2), B, L, facecolor=C["concreto"],
-                            edgecolor="#2b3137", lw=1.4, alpha=0.35))
+                            edgecolor=C["hatch"], lw=1.4, alpha=0.5, hatch="xxx"))
     n = 7
     for i in range(1, n):
         yy = -L / 2 + L * i / n
@@ -161,19 +162,56 @@ def _ok(b):
             else "<font color='#b91c1c'>NO CUMPLE</font>")
 
 
+def _fig_to_image(fig, ancho_cm, alto_cm) -> "Image":
+    """Renderiza una figura matplotlib a un flowable Image (cerrando la figura)."""
+    b = io.BytesIO()
+    fig.savefig(b, format="png", dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    b.seek(0)
+    return Image(b, width=ancho_cm * cm, height=alto_cm * cm)
+
+
+def _titulo_aislada(resultado) -> str:
+    """Título descriptivo para la memoria de la aislada / conectada.
+
+    Ej.: «Zapata aislada rectangular · excéntrica», «Zapata conectada /
+    medianera (con viga centradora)».
+    """
+    tipo = resultado.get("tipo", "aislada")
+    if tipo == "conectada":
+        vc = resultado.get("esquinera", {}).get("viga_centradora", True)
+        return ("Zapata conectada / medianera"
+                + (" (con viga centradora)" if vc else " (sin viga centradora)"))
+    partes = ["Zapata aislada"]
+    forma = resultado.get("forma", "")
+    if forma:
+        partes.append(forma)
+    txt = " ".join(partes)
+    carga = resultado.get("carga", "")
+    if carga:
+        txt += f" · {carga}"
+    return txt
+
+
 def generar_memoria_zapata(datos, resultado, entradas) -> bytes:
+    est = resultado.get("estructural", {})
+    # Los tipos combinada/triangular tienen otra forma de resultado → memoria
+    # específica. La aislada (y la esquinera, que reusa su forma) sigue aquí.
+    if "flexion_L" not in est:
+        return _memoria_zapata_especial(datos, resultado, entradas,
+                                        resultado.get("tipo", "aislada"))
     g = resultado["geometria"]
     geo = resultado["geotecnico"]
-    est = resultado["estructural"]
     pz = est["punzonamiento"]
     fL = est["flexion_L"]
     fB = est["flexion_B"]
 
+    titulo = _titulo_aislada(resultado)
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4,
                             leftMargin=2 * cm, rightMargin=2 * cm,
                             topMargin=1.8 * cm, bottomMargin=1.8 * cm,
-                            title="Memoria de cálculo — Zapata aislada")
+                            title=f"Memoria de cálculo — {titulo}")
     ss = getSampleStyleSheet()
     h1 = ParagraphStyle("h1", parent=ss["Heading1"], fontName=_FONT_B, fontSize=15, textColor=TINTA, spaceAfter=2)
     h2 = ParagraphStyle("h2", parent=ss["Heading2"], fontName=_FONT_B, fontSize=11.5, textColor=VERDE,
@@ -191,9 +229,17 @@ def generar_memoria_zapata(datos, resultado, entradas) -> bytes:
     gc = float(entradas.get("gamma_concreto", 24) or 24)
     pos = str(entradas.get("posicion", "interior") or "interior")
     fcarga = float(entradas.get("factor_carga", 1.5) or 1.5)
+    Mx = float(entradas.get("M_servicio", 0.0) or 0.0)
+    My = float(entradas.get("My_servicio", 0.0) or 0.0)
+    if abs(My) > 1e-9:
+        mom_str = f"Mx={_tf(Mx):.1f} · My={_tf(My):.1f} tonf·m"
+    elif abs(Mx) > 1e-9:
+        mom_str = f"{_tf(Mx):.1f} tonf·m"
+    else:
+        mom_str = "0.0 tonf·m (concéntrica)"
 
     # Encabezado
-    el.append(Paragraph("Memoria de cálculo — Diseño de zapata aislada", h1))
+    el.append(Paragraph(f"Memoria de cálculo — {titulo}", h1))
     el.append(Paragraph("Dimensionamiento geotécnico y diseño estructural · NSR-10 / ACI 318", small))
     el.append(HRFlowable(width="100%", thickness=1, color=VERDE, spaceBefore=6, spaceAfter=6))
 
@@ -210,8 +256,7 @@ def generar_memoria_zapata(datos, resultado, entradas) -> bytes:
     el.append(_tabla([
         ["Parámetro", "Valor", "Parámetro", "Valor"],
         ["Columna", f"{g['c1_m']*100:.0f} × {g['c2_m']*100:.0f} cm", "Posición", pos],
-        ["P servicio", f"{_tf(est['Pu_kN']/fcarga):.1f} tonf", "Momento M",
-         f"{_tm(geo['P_total_servicio_kN']*geo['excentricidad_m']):.1f} tonf·m"],
+        ["P servicio", f"{_tf(est['Pu_kN']/fcarga):.1f} tonf", "Momento", mom_str],
         ["q admisible", f"{_tm(geo['q_adm_kPa']):.1f} tonf/m²", "Profundidad Df", f"{Df:.2f} m"],
         ["f'c", f"{fc:.0f} MPa", "fy", f"{fy:.0f} MPa"],
         ["γ suelo", f"{gs/G:.2f} tonf/m³", "γ concreto", f"{gc/G:.2f} tonf/m³"],
@@ -300,7 +345,279 @@ def generar_memoria_zapata(datos, resultado, entradas) -> bytes:
 
     el.append(Spacer(1, 14))
     el.append(HRFlowable(width="100%", thickness=0.5, color=GRIS_CLARO))
-    el.append(Paragraph("Generado por CimX · Zapata aislada · NSR-10 / ACI 318", small))
+    el.append(Paragraph(f"Generado por CimX · {titulo} · NSR-10 / ACI 318", small))
 
+    doc.build(el)
+    return buf.getvalue()
+
+
+# ---------------------------------------------------------------------------
+# Dibujos de los tipos especiales (combinada, triangular)
+# ---------------------------------------------------------------------------
+def dibujar_combinada(res, entradas) -> "plt.Figure":
+    """Planta (dos columnas sobre la viga-zapata) + diagrama de momentos M(x)."""
+    g, est = res["geometria"], res["estructural"]
+    B, L = g["B_m"], g["L_m"]
+    x1, x2 = g["x1_col_m"], g["x2_col_m"]
+    c1a, c2a = g["c1a_m"], g["c2a_m"]
+    c1b, c2b = g["c1b_m"], g["c2b_m"]
+    Pu1, Pu2 = est["Pu1_kN"], est["Pu2_kN"]
+    w = (Pu1 + Pu2) / L if L else 0.0
+
+    def M(x):
+        m = w * x * x / 2.0
+        if x > x1:
+            m -= Pu1 * (x - x1)
+        if x > x2:
+            m -= Pu2 * (x - x2)
+        return m
+
+    C = {"concreto": "#7f8a93", "hatch": "#333b45", "col": "#9aa6ae",
+         "mpos": "#2f6f4f", "mneg": "#b45309"}
+    plt.rcParams["hatch.linewidth"] = 0.5
+
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(6.2, 5.8),
+                                   gridspec_kw={"height_ratios": [1.0, 1.05]})
+
+    # -------------------- PLANTA --------------------
+    ax1.add_patch(Rectangle((0, -B / 2), L, B, facecolor=C["concreto"],
+                            edgecolor=C["hatch"], lw=1.4, alpha=0.5, hatch="xxx"))
+    for xc, c1c, c2c, lab in [(x1, c1a, c2a, "C1"), (x2, c1b, c2b, "C2")]:
+        ax1.add_patch(Rectangle((xc - c1c / 2, -c2c / 2), c1c, c2c,
+                                facecolor=C["col"], edgecolor="#2b3137", lw=1.2))
+        ax1.text(xc, c2c / 2 + 0.05 * B + 0.03, lab, ha="center", va="bottom",
+                 fontsize=8.5, fontweight="bold", color="#33404a")
+    ax1.annotate("", xy=(L, -B / 2 - 0.20 * B), xytext=(0, -B / 2 - 0.20 * B),
+                 arrowprops=dict(arrowstyle="<->", color="#334155", lw=1))
+    ax1.text(L / 2, -B / 2 - 0.34 * B, f"L = {L:.2f} m", ha="center",
+             fontsize=8.5, fontweight="bold")
+    ax1.annotate("", xy=(x2, B / 2 + 0.12 * B), xytext=(x1, B / 2 + 0.12 * B),
+                 arrowprops=dict(arrowstyle="<->", color="#334155", lw=1))
+    ax1.text((x1 + x2) / 2, B / 2 + 0.17 * B, f"s = {x2 - x1:.2f} m",
+             ha="center", fontsize=8)
+    ax1.text(-0.03 * L, 0, f"B = {B:.2f} m", ha="right", va="center",
+             rotation=90, fontsize=8.5, fontweight="bold")
+    ax1.set_xlim(-0.12 * L, 1.06 * L)
+    ax1.set_ylim(-B * 1.05, B * 1.05)
+    ax1.set_aspect("equal")
+    ax1.set_title("PLANTA", fontsize=10, fontweight="bold")
+    ax1.axis("off")
+
+    # -------------------- DIAGRAMA DE MOMENTOS --------------------
+    xs = [L * i / 240 for i in range(241)]
+    ms = [M(x) / G for x in xs]           # tonf·m
+    ax2.axhline(0, color="#334155", lw=1.0)
+    ax2.plot(xs, ms, color="#1f2937", lw=1.5)
+    ax2.fill_between(xs, ms, 0, where=[m >= 0 for m in ms],
+                     color=C["mpos"], alpha=0.28, interpolate=True)
+    ax2.fill_between(xs, ms, 0, where=[m < 0 for m in ms],
+                     color=C["mneg"], alpha=0.28, interpolate=True)
+    for xc in (x1, x2):
+        ax2.axvline(xc, color=C["col"], ls="--", lw=0.8)
+    Mp, xp = est["M_pos_kNm"] / G, est["x_M_pos_m"]
+    Mn, xn = est["M_neg_kNm"] / G, est["x_M_neg_m"]
+    if abs(Mp) > 1e-6:
+        ax2.plot(xp, Mp, "o", color=C["mpos"], ms=4)
+        ax2.annotate(f"M⁺={Mp:.1f}", xy=(xp, Mp), xytext=(0, 6),
+                     textcoords="offset points", ha="center", fontsize=8,
+                     color=C["mpos"], fontweight="bold")
+    if abs(Mn) > 1e-6:
+        ax2.plot(xn, Mn, "o", color=C["mneg"], ms=4)
+        ax2.annotate(f"M⁻={Mn:.1f}", xy=(xn, Mn), xytext=(0, -12),
+                     textcoords="offset points", ha="center", fontsize=8,
+                     color=C["mneg"], fontweight="bold")
+    ax2.set_xlim(-0.02 * L, 1.02 * L)
+    ax2.set_title("DIAGRAMA DE MOMENTOS  [tonf·m]", fontsize=10, fontweight="bold")
+    ax2.set_xlabel("x  [m]", fontsize=8)
+    ax2.grid(True, ls=":", lw=0.4, alpha=0.5)
+    for s in ("top", "right"):
+        ax2.spines[s].set_visible(False)
+
+    fig.tight_layout()
+    return fig
+
+
+def dibujar_triangular(res, entradas) -> "plt.Figure":
+    """Planta triangular isósceles con la columna en el baricentro."""
+    g = res["geometria"]
+    base, altura = g["base_m"], g["altura_m"]
+    c1, c2 = g["c1_m"], g["c2_m"]
+
+    C = {"concreto": "#7f8a93", "hatch": "#333b45", "col": "#9aa6ae"}
+    plt.rcParams["hatch.linewidth"] = 0.5
+    fig, ax = plt.subplots(figsize=(5.0, 4.8))
+
+    verts = [(-base / 2, 0), (base / 2, 0), (0, altura)]
+    ax.add_patch(Polygon(verts, closed=True, facecolor=C["concreto"],
+                         edgecolor=C["hatch"], lw=1.4, alpha=0.5, hatch="xxx"))
+    yb = altura / 3.0                     # baricentro
+    ax.add_patch(Rectangle((-c1 / 2, yb - c2 / 2), c1, c2, facecolor=C["col"],
+                           edgecolor="#2b3137", lw=1.2))
+    ax.plot(0, yb, "+", color="#2b3137", ms=11, mew=1.3)
+    ax.text(0, yb - 0.12 * altura, "columna\n(baricentro)", ha="center",
+            va="top", fontsize=8, color="#33404a")
+    ax.annotate("", xy=(base / 2, -0.12 * altura), xytext=(-base / 2, -0.12 * altura),
+                arrowprops=dict(arrowstyle="<->", color="#334155", lw=1))
+    ax.text(0, -0.20 * altura, f"base = {base:.2f} m", ha="center",
+            fontsize=8.5, fontweight="bold")
+    ax.annotate("", xy=(base / 2 + 0.14 * base, altura),
+                xytext=(base / 2 + 0.14 * base, 0),
+                arrowprops=dict(arrowstyle="<->", color="#334155", lw=1))
+    ax.text(base / 2 + 0.24 * base, altura / 2, f"altura = {altura:.2f} m",
+            va="center", ha="center", rotation=90, fontsize=8.5, fontweight="bold")
+    ax.set_xlim(-base * 0.90, base * 1.00)
+    ax.set_ylim(-0.28 * altura, 1.12 * altura)
+    ax.set_aspect("equal")
+    ax.set_title("PLANTA TRIANGULAR", fontsize=10, fontweight="bold")
+    ax.axis("off")
+    fig.tight_layout()
+    return fig
+
+
+# ---------------------------------------------------------------------------
+# Memoria específica para tipos con otra forma de resultado (combinada, triangular)
+# ---------------------------------------------------------------------------
+_TIPO_TITULO = {
+    "combinada": "Zapata combinada (dos columnas)",
+    "triangular": "Zapata triangular",
+}
+
+
+def _memoria_zapata_especial(datos, resultado, entradas, tipo) -> bytes:
+    g = resultado["geometria"]
+    geo = resultado["geotecnico"]
+    est = resultado["estructural"]
+
+    buf = io.BytesIO()
+    titulo = _TIPO_TITULO.get(tipo, "Zapata")
+    doc = SimpleDocTemplate(buf, pagesize=A4,
+                            leftMargin=2 * cm, rightMargin=2 * cm,
+                            topMargin=1.8 * cm, bottomMargin=1.8 * cm,
+                            title=f"Memoria de cálculo — {titulo}")
+    ss = getSampleStyleSheet()
+    h1 = ParagraphStyle("h1", parent=ss["Heading1"], fontName=_FONT_B, fontSize=15, textColor=TINTA, spaceAfter=2)
+    h2 = ParagraphStyle("h2", parent=ss["Heading2"], fontName=_FONT_B, fontSize=11.5, textColor=VERDE, spaceBefore=12, spaceAfter=5)
+    p = ParagraphStyle("p", parent=ss["BodyText"], fontName=_FONT, fontSize=9, textColor=TINTA, leading=13)
+    small = ParagraphStyle("small", parent=p, fontName=_FONT, fontSize=8, textColor=GRIS)
+    el = []
+
+    fc = float(entradas.get("fc", 21) or 21)
+    fy = float(entradas.get("fy", 420) or 420)
+    Df = float(entradas.get("Df", 1.5) or 1.5)
+
+    el.append(Paragraph(f"Memoria de cálculo — {titulo}", h1))
+    el.append(Paragraph("Dimensionamiento geotécnico y diseño estructural · NSR-10 / ACI 318", small))
+    el.append(HRFlowable(width="100%", thickness=1, color=VERDE, spaceBefore=6, spaceAfter=6))
+    el.append(_tabla([
+        ["Proyecto", getattr(datos, "proyecto", "") or "—", "Fecha", date.today().isoformat()],
+        ["Ingeniero", getattr(datos, "ingeniero", "") or "—",
+         "Ubicación", getattr(datos, "ubicacion", "") or "—"],
+    ], [2.6 * cm, 6.5 * cm, 2.2 * cm, 5.0 * cm], header=False))
+
+    def _cortante_ok(): return _ok(est.get("cumple_cortante", False))
+
+    if tipo == "combinada":
+        el.append(Paragraph("1. Geometría", h2))
+        el.append(_tabla([
+            ["Ancho B", f"{g['B_m']:.2f} m", "Largo L", f"{g['L_m']:.2f} m"],
+            ["Espesor h", f"{g['h_m']:.2f} m", "Peralte d", f"{g['d_m']:.3f} m"],
+            ["Columna 1", f"{g['c1a_m']*100:.0f}×{g['c2a_m']*100:.0f} cm (x={g['x1_col_m']:.2f} m)",
+             "Columna 2", f"{g['c1b_m']*100:.0f}×{g['c2b_m']*100:.0f} cm (x={g['x2_col_m']:.2f} m)"],
+            ["Separación", f"{g['separacion_m']:.2f} m", "Profundidad Df", f"{Df:.2f} m"],
+        ], [3.2 * cm, 4.0 * cm, 3.2 * cm, 4.0 * cm], header=False))
+
+        el.append(Spacer(1, 6))
+        el.append(_fig_to_image(dibujar_combinada(resultado, entradas), 14.0, 13.1))
+        el.append(Paragraph("Esquema en planta y diagrama de momentos de la viga "
+                            "longitudinal (M⁺ en voladizos, M⁻ entre columnas).", small))
+
+        el.append(Paragraph("2. Dimensionamiento geotécnico", h2))
+        el.append(Paragraph("La planta se dimensiona para que la resultante de las cargas "
+                            "coincida con el centroide (presión de contacto ~uniforme).", p))
+        el.append(_tabla([
+            ["Resultante (servicio)", f"{_tf(geo['resultante_servicio_kN']):.1f} tonf",
+             "Excentricidad", f"{geo['excentricidad_m']:.3f} m"],
+            ["q máx", f"{_tm(geo['q_max_kPa']):.1f} tonf/m²", "q mín", f"{_tm(geo['q_min_kPa']):.1f} tonf/m²"],
+            ["q admisible", f"{_tm(geo['q_adm_kPa']):.1f} tonf/m²", "Relación D/C", f"{geo['ratio']}"],
+        ], [3.4 * cm, 3.8 * cm, 3.4 * cm, 3.8 * cm], header=False))
+        el.append(Paragraph(f"<b>Verificación geotécnica: {_ok(geo['cumple'])}</b>", p))
+
+        el.append(Paragraph("3. Diseño estructural (viga longitudinal)", h2))
+        el.append(Paragraph(f"Presión de diseño q<sub>u</sub> = {_tm(est['qu_kPa']):.1f} tonf/m². "
+                            "La zapata trabaja como viga en la dirección L.", p))
+        el.append(_tabla([
+            ["Momento máx. (+)", f"{_tm(est['M_pos_kNm']):.1f} tonf·m", "en x", f"{est['x_M_pos_m']:.2f} m"],
+            ["Momento máx. (−)", f"{_tm(est['M_neg_kNm']):.1f} tonf·m", "en x", f"{est['x_M_neg_m']:.2f} m"],
+            ["Cortante V máx", f"{_tf(est['V_max_kN']):.1f} tonf", "φVc (viga)", f"{_tf(est['phiVc_long_kN']):.1f} tonf"],
+        ], [3.4 * cm, 3.8 * cm, 3.4 * cm, 3.8 * cm], header=False))
+
+        el.append(Spacer(1, 4))
+        el.append(Paragraph("3.1 Punzonamiento por columna", p))
+        p1, p2 = est["punzonamiento_col1"], est["punzonamiento_col2"]
+        el.append(_tabla([
+            ["Columna", "Vu (tonf)", "φVc (tonf)", "D/C", "Estado"],
+            ["Columna 1", f"{_tf(p1['Vu_kN']):.1f}", f"{_tf(p1['phiVc_kN']):.1f}", f"{p1['ratio']}",
+             "cumple" if p1["cumple"] else "no cumple"],
+            ["Columna 2", f"{_tf(p2['Vu_kN']):.1f}", f"{_tf(p2['phiVc_kN']):.1f}", f"{p2['ratio']}",
+             "cumple" if p2["cumple"] else "no cumple"],
+        ], [4.0 * cm, 2.8 * cm, 2.8 * cm, 2.0 * cm, 2.6 * cm]))
+
+        el.append(Spacer(1, 4))
+        el.append(Paragraph("3.2 Flexión y refuerzo", p))
+        def _row(f, nom):
+            gob = " (mín.)" if f["gobierna_minimo"] else ""
+            return [nom, f"{_tm(f['Mu_kNm']):.2f}", f"{f['As_cm2']:.1f}{gob}",
+                    f"{f['n_barras']} Ø{f['db_mm']:.1f} @ {f['sep_cm']:.0f} cm"]
+        el.append(_tabla([
+            ["Refuerzo", "Mu (tonf·m)", "As (cm²)", "Distribución"],
+            _row(est["flexion_long_inferior"], "Longitudinal inferior (M⁺)"),
+            _row(est["flexion_long_superior"], "Longitudinal superior (M⁻)"),
+            _row(est["flexion_transversal_col1"], "Transversal columna 1"),
+            _row(est["flexion_transversal_col2"], "Transversal columna 2"),
+        ], [5.2 * cm, 2.8 * cm, 2.6 * cm, 3.6 * cm]))
+
+    else:  # triangular
+        el.append(Paragraph("1. Geometría", h2))
+        el.append(_tabla([
+            ["Base", f"{g['base_m']:.2f} m", "Altura", f"{g['altura_m']:.2f} m"],
+            ["Área", f"{g['area_m2']:.2f} m²", "Lado equivalente", f"{g['lado_equivalente_m']:.2f} m"],
+            ["Espesor h", f"{g['h_m']:.2f} m", "Peralte d", f"{g['d_m']:.3f} m"],
+        ], [3.2 * cm, 4.0 * cm, 3.2 * cm, 4.0 * cm], header=False))
+
+        el.append(Spacer(1, 6))
+        el.append(_fig_to_image(dibujar_triangular(resultado, entradas), 10.5, 10.1))
+
+        el.append(Paragraph("2. Dimensionamiento geotécnico", h2))
+        el.append(_tabla([
+            ["P total (servicio)", f"{_tf(geo['P_total_servicio_kN']):.1f} tonf",
+             "q uniforme", f"{_tm(geo['q_uniforme_kPa']):.1f} tonf/m²"],
+            ["q máx", f"{_tm(geo['q_max_kPa']):.1f} tonf/m²", "q admisible", f"{_tm(geo['q_adm_kPa']):.1f} tonf/m²"],
+        ], [3.4 * cm, 3.8 * cm, 3.4 * cm, 3.8 * cm], header=False))
+        el.append(Paragraph(f"<b>Verificación geotécnica: {_ok(geo['cumple'])}</b>", p))
+
+        el.append(Paragraph("3. Diseño estructural (aprox. cuadrada equivalente)", h2))
+        pz, cu, fx = est["punzonamiento"], est["una_via"], est["flexion"]
+        el.append(_tabla([
+            ["Verificación", "Vu (tonf)", "φVc (tonf)", "D/C", "Estado"],
+            ["Punzonamiento", f"{_tf(pz['Vu_kN']):.1f}", f"{_tf(pz['phiVc_kN']):.1f}", f"{pz['ratio']}",
+             "cumple" if pz["cumple"] else "no cumple"],
+            ["Cortante una vía", f"{_tf(cu['Vu_kN']):.1f}", f"{_tf(cu['phiVc_kN']):.1f}", f"{cu['ratio']}",
+             "cumple" if cu["cumple"] else "no cumple"],
+        ], [4.0 * cm, 2.8 * cm, 2.8 * cm, 2.0 * cm, 2.6 * cm]))
+        el.append(Spacer(1, 4))
+        gob = " (mín.)" if fx["gobierna_minimo"] else ""
+        el.append(_tabla([
+            ["Flexión", "Mu (tonf·m)", "As (cm²)", "Refuerzo"],
+            ["Ambas direcciones", f"{_tm(fx['Mu_kNm']):.2f}", f"{fx['As_cm2']:.1f}{gob}",
+             f"{fx['n_barras']} Ø{fx['db_mm']:.1f} @ {fx['sep_cm']:.0f} cm"],
+        ], [4.2 * cm, 2.8 * cm, 2.8 * cm, 4.0 * cm]))
+
+    el.append(Spacer(1, 5))
+    el.append(Paragraph(f"<b>Verificación al cortante: {_cortante_ok()}</b>", p))
+    for a in resultado.get("avisos", []):
+        el.append(Paragraph(f"⚠ {a}", small))
+    el.append(Spacer(1, 14))
+    el.append(HRFlowable(width="100%", thickness=0.5, color=GRIS_CLARO))
+    el.append(Paragraph(f"Generado por CimX · {titulo} · NSR-10 / ACI 318", small))
     doc.build(el)
     return buf.getvalue()

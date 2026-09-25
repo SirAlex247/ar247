@@ -51,6 +51,10 @@ from retaining_wall.utils.formato import FormatoUnidades
 
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
+# Recargar plantillas Jinja al vuelo: en desarrollo evita tener que reiniciar
+# el servidor para ver cambios en index.html. Inocuo en la app empaquetada.
+app.config["TEMPLATES_AUTO_RELOAD"] = True
+app.jinja_env.auto_reload = True
 
 
 # =============================================================================
@@ -547,9 +551,11 @@ def _resultado_gravedad(muro, sistema, reporte, fmt: FormatoUnidades,
         "sobrecarga_kPa":      muro.condiciones.sobrecarga,
     }
 
+    from retaining_wall.normas import normalizar_norma as _nn
     return {
         "ok": True,
         "tipo_muro": "gravedad",
+        "norma": _nn(datos.get("norma")),
         "muro_resumen": muro_resumen,
         "muro_resumen_raw": muro_resumen_raw,
         "sismo_resumen": None,                  # gravedad-sismo: futuro
@@ -617,8 +623,25 @@ def ejecutar_analisis(datos: dict) -> dict:
             muro, metodo_empuje=datos.get("metodo_empuje", "rankine"))
     sistema = calc_cargas.calcular(incluir_sismo=datos.get("incluir_sismo", False))
 
+    # Norma de diseño elegida (NSR-10 por defecto; CCP-14 = LRFD-AASHTO)
+    from retaining_wall.normas import normalizar_norma, NORMA_CCP14
+    norma = normalizar_norma(datos.get("norma"))
+    es_ccp14 = norma == NORMA_CCP14
+    incluir_sismo_flag = bool(datos.get("incluir_sismo", False))
+    apoyo_roca = bool(datos.get("apoyo_roca", False))
+    try:
+        gamma_EQ = float(datos.get("gamma_EQ", 0.5) or 0.5)
+    except (TypeError, ValueError):
+        gamma_EQ = 0.5
+
     # Estabilidad
-    analisis = AnalisisEstabilidad(muro, sistema)
+    if es_ccp14:
+        from retaining_wall.core.estabilidad_ccp14 import AnalisisEstabilidadCCP14
+        analisis = AnalisisEstabilidadCCP14(
+            muro, sistema, apoyo_roca=apoyo_roca,
+            incluir_sismo=incluir_sismo_flag, gamma_EQ=gamma_EQ)
+    else:
+        analisis = AnalisisEstabilidad(muro, sistema)
     reporte = analisis.analisis_completo()
 
     # Desgloses detallados (deslizamiento, capacidad de carga, excentricidad)
@@ -676,8 +699,13 @@ def ejecutar_analisis(datos: dict) -> dict:
     }
 
     # Combinaciones
-    res_elu = AplicadorCombinaciones.aplicar_todas(CombinacionesNSR10.elu(), sistema)
-    res_els = AplicadorCombinaciones.aplicar_todas(CombinacionesNSR10.els(), sistema)
+    if es_ccp14:
+        # Combinaciones LRFD (Resistencia I máx/mín y Evento Extremo I).
+        res_elu = analisis.combinaciones_lrfd()
+        res_els = []
+    else:
+        res_elu = AplicadorCombinaciones.aplicar_todas(CombinacionesNSR10.elu(), sistema)
+        res_els = AplicadorCombinaciones.aplicar_todas(CombinacionesNSR10.els(), sistema)
 
     # ──────────────────────────────────────────────────────────────────
     # MURO DE GRAVEDAD — flujo simplificado (MVP)
@@ -694,21 +722,29 @@ def ejecutar_analisis(datos: dict) -> dict:
         )
 
     # Diseño estructural
-    disenador = DisenadorMuroVoladizo(
-        muro,
-        metodo_empuje=datos.get("metodo_empuje", "rankine"),
-    )
-    reporte_dis = disenador.disenar(
-        q_puntera=reporte.presiones["q_puntera"],
-        q_talon=reporte.presiones["q_talon"],
-    )
+    if es_ccp14:
+        from retaining_wall.core.diseno_estructural_ccp14 import DisenadorMuroVoladizoCCP14
+        disenador = DisenadorMuroVoladizoCCP14(
+            muro, metodo_empuje=datos.get("metodo_empuje", "rankine"),
+            incluir_sismo=incluir_sismo_flag, gamma_EQ=gamma_EQ)
+        reporte_dis = disenador.disenar(sistema)
+        diseno_detalle = disenador.detalle_diseno_estructural(sistema, reporte_dis)
+    else:
+        disenador = DisenadorMuroVoladizo(
+            muro,
+            metodo_empuje=datos.get("metodo_empuje", "rankine"),
+        )
+        reporte_dis = disenador.disenar(
+            q_puntera=reporte.presiones["q_puntera"],
+            q_talon=reporte.presiones["q_talon"],
+        )
 
-    # Desglose paso a paso del diseño estructural (Mu y cuantía por elemento)
-    diseno_detalle = disenador.detalle_diseno_estructural(
-        q_puntera=reporte.presiones["q_puntera"],
-        q_talon=reporte.presiones["q_talon"],
-        reporte=reporte_dis,
-    )
+        # Desglose paso a paso del diseño estructural (Mu y cuantía por elemento)
+        diseno_detalle = disenador.detalle_diseno_estructural(
+            q_puntera=reporte.presiones["q_puntera"],
+            q_talon=reporte.presiones["q_talon"],
+            reporte=reporte_dis,
+        )
     # Reformateo a MKS (fuerzas, momentos, presiones)
     def _conv_paso(p: dict) -> dict:
         u = p.get("unidad", "")
@@ -783,17 +819,21 @@ def ejecutar_analisis(datos: dict) -> dict:
     # Cargas (filas para tabla)
     cargas_rows = []
     cargas_raw = []
+    if es_ccp14:
+        from retaining_wall.normas import ccp14 as _ccp14
     for i, c in enumerate(sistema.cargas, start=1):
         mag_out, _ = fmt.fuerza_lineal(c.magnitud)
+        # Categoría a mostrar: AASHTO (DC/EV/EH/LS/EP/EQ) en CCP-14, NSR-10 en otro caso
+        cat_disp = _ccp14.tipo_aashto(c) if es_ccp14 else c.categoria.value
         cargas_rows.append([
             str(i), c.nombre, f"{mag_out:.2f}",
-            c.tipo.value, c.categoria.value,
+            c.tipo.value, cat_disp,
         ])
         cargas_raw.append({
             "nombre": c.nombre,
             "magnitud_kN": c.magnitud,     # kN/m (SI) para el frontend
             "tipo": c.tipo.value,
-            "categoria": c.categoria.value,
+            "categoria": cat_disp,
         })
 
     # Combinaciones (filas)
@@ -960,7 +1000,7 @@ def ejecutar_analisis(datos: dict) -> dict:
             f"{fmt.presion(muro.condiciones.sobrecarga)[0]:.2f}"),
     })
 
-    sismo_resumen = params_sismo.resumen() if params_sismo else None
+    sismo_resumen = params_sismo.resumen(norma) if params_sismo else None
 
     qp_v, qp_u = fmt.presion(reporte.presiones["q_puntera"])
     qt_v, qt_u = fmt.presion(reporte.presiones["q_talon"])
@@ -1015,6 +1055,7 @@ def ejecutar_analisis(datos: dict) -> dict:
 
     return {
         "ok": True,
+        "norma": norma,
         "muro_resumen": muro_resumen,
         "muro_resumen_raw": muro_resumen_raw,
         "sismo_resumen": sismo_resumen,
@@ -1237,6 +1278,8 @@ def construir_pilote_diseno_desde_datos(d: dict) -> dict:
         db_long=_f(d.get("db_long"), 0.01905), db_trans=_f(d.get("db_trans"), 0.00953),
         recubrimiento=_f(d.get("recubrimiento"), 0.075),
         D=_f(d.get("D")), N=int(_f(d.get("N"))), L_max=_f(d.get("L_max"), 25.0),
+        norma=str(d.get("norma", "NSR10") or "NSR10"),
+        tipo_suelo=str(d.get("tipo_suelo", "arena") or "arena"),
     )
 
 
@@ -1274,25 +1317,14 @@ def api_pilote_diseno_pdf():
 
 
 def construir_zapata_desde_datos(d: dict) -> dict:
-    """Diseña una zapata aislada desde el payload (SI)."""
-    from retaining_wall.core.zapata import disenar_zapata
+    """Diseña una zapata del tipo indicado desde el payload (SI).
 
-    def _f(v, dv=0.0):
-        return float(v) if v not in (None, "") else dv
-
-    return disenar_zapata(
-        c1=_f(d.get("c1"), 0.40), c2=_f(d.get("c2"), 0.40),
-        P_servicio=_f(d.get("P_servicio")), M_servicio=_f(d.get("M_servicio")),
-        q_adm=_f(d.get("q_adm"), 200.0),
-        fc=_f(d.get("fc"), 21.0), fy=_f(d.get("fy"), 420.0),
-        recubrimiento=_f(d.get("recubrimiento"), 0.075), db=_f(d.get("db"), 0.01905),
-        B=_f(d.get("B")), L=_f(d.get("L")), h=_f(d.get("h")),
-        Df=_f(d.get("Df"), 1.5),
-        gamma_suelo=_f(d.get("gamma_suelo"), 18.0),
-        gamma_concreto=_f(d.get("gamma_concreto"), 24.0),
-        Pu=_f(d.get("Pu")), factor_carga=_f(d.get("factor_carga"), 1.5),
-        posicion=str(d.get("posicion", "interior") or "interior"),
-    )
+    ``tipo`` ∈ {aislada, concentrica, excentrica, cuadrada, rectangular,
+    combinada, esquinera, triangular}. Por compatibilidad, sin ``tipo`` se
+    diseña una zapata aislada (comportamiento previo)."""
+    from retaining_wall.core.zapatas_tipos import disenar_zapata_tipo
+    tipo = str(d.get("tipo", "aislada") or "aislada")
+    return disenar_zapata_tipo(tipo, d)
 
 
 @app.route("/api/zapata", methods=["POST"])
@@ -1330,6 +1362,177 @@ def api_zapata_pdf():
         return _error_response(e)
 
 
+def construir_placa_desde_datos(d: dict) -> dict:
+    """Diseña una placa/losa de cimentación maciza desde el payload (SI).
+
+    Las columnas se toman de ``columnas`` (lista de {x, y, P, c1, c2}); si no se
+    da, se construye una malla regular con nx·ny·sx·sy·P (``malla_columnas``)."""
+    from retaining_wall.core.placa import disenar_placa, malla_columnas
+
+    def _f(v, dv=0.0):
+        return float(v) if v not in (None, "") else dv
+
+    factor = _f(d.get("factor_carga"), 1.5)
+    c1 = _f(d.get("c1"), 0.40)
+    c2 = _f(d.get("c2"), 0.40)
+    columnas = d.get("columnas")
+    if not columnas:
+        columnas = malla_columnas(
+            nx=int(_f(d.get("nx"), 2)), ny=int(_f(d.get("ny"), 2)),
+            sx=_f(d.get("sx"), 5.0), sy=_f(d.get("sy"), 5.0),
+            P=_f(d.get("P")), c1=c1, c2=c2, factor_carga=factor)
+    return disenar_placa(
+        columnas=columnas, q_adm=_f(d.get("q_adm"), 200.0),
+        B=_f(d.get("B")), L=_f(d.get("L")), h=_f(d.get("h")),
+        fc=_f(d.get("fc"), 21.0), fy=_f(d.get("fy"), 420.0),
+        recubrimiento=_f(d.get("recubrimiento"), 0.075), db=_f(d.get("db"), 0.01905),
+        Df=_f(d.get("Df"), 1.5), gamma_suelo=_f(d.get("gamma_suelo"), 18.0),
+        gamma_concreto=_f(d.get("gamma_concreto"), 24.0),
+        factor_carga=factor, voladizo=_f(d.get("voladizo"), 0.5))
+
+
+@app.route("/api/placa", methods=["POST"])
+def api_placa():
+    """Diseño de una placa/losa de cimentación maciza (método rígido, NSR-10)."""
+    try:
+        d = request.get_json(force=True)
+        return jsonify({"ok": True, **construir_placa_desde_datos(d)})
+    except Exception as e:
+        return _error_response(e)
+
+
+@app.route("/api/placa_pdf", methods=["POST"])
+def api_placa_pdf():
+    """Genera la memoria de cálculo (PDF) de la placa maciza."""
+    try:
+        d = request.get_json(force=True)
+        resultado = construir_placa_desde_datos(d)
+        datos = DatosProyecto(
+            empresa=d.get("empresa", ""),
+            proyecto=d.get("proyecto", ""),
+            ubicacion=d.get("ubicacion", ""),
+            ingeniero=d.get("ingeniero", ""),
+            contratante=d.get("contratante", ""),
+        )
+        from retaining_wall.core.placa_reporte import generar_memoria_placa
+        pdf_bytes = generar_memoria_placa(datos, resultado, d)
+        import io
+        buffer = io.BytesIO(pdf_bytes)
+        buffer.seek(0)
+        nombre = (datos.proyecto or "memoria_placa").replace(" ", "_")
+        return send_file(buffer, mimetype="application/pdf",
+                         as_attachment=True, download_name=f"{nombre}_placa.pdf")
+    except Exception as e:
+        return _error_response(e)
+
+
+def construir_caisson_desde_datos(d: dict) -> dict:
+    """Diseña un caisson/pila excavada desde el payload (SI), por la norma elegida."""
+    from retaining_wall.core.caisson import disenar_caisson
+
+    def _f(v, dv=0.0):
+        return float(v) if v not in (None, "") else dv
+
+    estratos = d.get("estratos") or []
+    return disenar_caisson(
+        D=_f(d.get("D"), 1.0), L=_f(d.get("L")), estratos=estratos,
+        P_servicio=_f(d.get("P_servicio")), norma=str(d.get("norma", "NSR10") or "NSR10"),
+        nivel_freatico=_f(d.get("nivel_freatico"), 100.0),
+        D_campana=_f(d.get("D_campana")), altura_campana=_f(d.get("altura_campana")),
+        FS=_f(d.get("FS")), Pu=_f(d.get("Pu")), factor_carga=_f(d.get("factor_carga"), 1.6),
+        fc=_f(d.get("fc"), 21.0), fy=_f(d.get("fy"), 420.0),
+        cuantia=_f(d.get("cuantia"), 0.01),
+        tipo_refuerzo=str(d.get("tipo_refuerzo", "espiral") or "espiral"),
+        db_long=_f(d.get("db_long"), 0.0254), db_trans=_f(d.get("db_trans"), 0.00953),
+        recubrimiento=_f(d.get("recubrimiento"), 0.075),
+        L_auto=bool(d.get("L_auto", False)), L_max=_f(d.get("L_max"), 40.0))
+
+
+@app.route("/api/caisson", methods=["POST"])
+def api_caisson():
+    """Diseño de un caisson / pila excavada de gran diámetro (NSR-10 o CCP-14)."""
+    try:
+        d = request.get_json(force=True)
+        return jsonify({"ok": True, **construir_caisson_desde_datos(d)})
+    except Exception as e:
+        return _error_response(e)
+
+
+@app.route("/api/caisson_pdf", methods=["POST"])
+def api_caisson_pdf():
+    """Genera la memoria de cálculo (PDF) del caisson."""
+    try:
+        d = request.get_json(force=True)
+        resultado = construir_caisson_desde_datos(d)
+        datos = DatosProyecto(
+            empresa=d.get("empresa", ""),
+            proyecto=d.get("proyecto", ""),
+            ubicacion=d.get("ubicacion", ""),
+            ingeniero=d.get("ingeniero", ""),
+            contratante=d.get("contratante", ""),
+        )
+        from retaining_wall.core.caisson_reporte import generar_memoria_caisson
+        pdf_bytes = generar_memoria_caisson(datos, resultado, d)
+        import io
+        buffer = io.BytesIO(pdf_bytes)
+        buffer.seek(0)
+        nombre = (datos.proyecto or "memoria_caisson").replace(" ", "_")
+        return send_file(buffer, mimetype="application/pdf",
+                         as_attachment=True, download_name=f"{nombre}_caisson.pdf")
+    except Exception as e:
+        return _error_response(e)
+
+
+def construir_maquina_desde_datos(d: dict) -> dict:
+    """Analiza una cimentación de máquina (ACI 351.3R) desde el payload (SI)."""
+    from retaining_wall.core.maquinas import disenar_maquina
+
+    def _f(v, dv=0.0):
+        return float(v) if v not in (None, "") else dv
+
+    return disenar_maquina(
+        B=_f(d.get("B"), 4.0), L=_f(d.get("L"), 3.0), h=_f(d.get("h"), 1.2),
+        peso_maquina=_f(d.get("peso_maquina")), rpm=_f(d.get("rpm"), 1500.0),
+        F0=_f(d.get("F0")), masa_excentrica_e=_f(d.get("masa_excentrica_e")),
+        hcg_maquina=_f(d.get("hcg_maquina")), torque_dinamico=_f(d.get("torque_dinamico")),
+        G_suelo=_f(d.get("G_suelo")), Vs=_f(d.get("Vs")), nu=_f(d.get("nu"), 0.33),
+        gamma_suelo=_f(d.get("gamma_suelo"), 18.0), gamma_concreto=_f(d.get("gamma_concreto"), 24.0),
+        q_adm=_f(d.get("q_adm")), amplitud_admisible_um=_f(d.get("amplitud_admisible_um"), 50.0))
+
+
+@app.route("/api/maquina", methods=["POST"])
+def api_maquina():
+    """Análisis dinámico de una cimentación de máquina (ACI 351.3R)."""
+    try:
+        d = request.get_json(force=True)
+        return jsonify({"ok": True, **construir_maquina_desde_datos(d)})
+    except Exception as e:
+        return _error_response(e)
+
+
+@app.route("/api/maquina_pdf", methods=["POST"])
+def api_maquina_pdf():
+    """Genera la memoria de cálculo (PDF) de la cimentación de máquina."""
+    try:
+        d = request.get_json(force=True)
+        resultado = construir_maquina_desde_datos(d)
+        datos = DatosProyecto(
+            empresa=d.get("empresa", ""), proyecto=d.get("proyecto", ""),
+            ubicacion=d.get("ubicacion", ""), ingeniero=d.get("ingeniero", ""),
+            contratante=d.get("contratante", ""),
+        )
+        from retaining_wall.core.maquinas_reporte import generar_memoria_maquina
+        pdf_bytes = generar_memoria_maquina(datos, resultado, d)
+        import io
+        buffer = io.BytesIO(pdf_bytes)
+        buffer.seek(0)
+        nombre = (datos.proyecto or "memoria_maquina").replace(" ", "_")
+        return send_file(buffer, mimetype="application/pdf",
+                         as_attachment=True, download_name=f"{nombre}_maquina.pdf")
+    except Exception as e:
+        return _error_response(e)
+
+
 def construir_dado_desde_datos(d: dict) -> dict:
     """Diseña un dado/cabezal de pilotes desde el payload (SI)."""
     from retaining_wall.core.dado import disenar_dado
@@ -1350,6 +1553,7 @@ def construir_dado_desde_datos(d: dict) -> dict:
         factor_peso=_f(d.get("factor_peso"), 1.2),
         posicion=str(d.get("posicion", "interior") or "interior"),
         metodo=str(d.get("metodo", "ambos") or "ambos"),
+        norma=str(d.get("norma", "NSR10") or "NSR10"),
     )
 
 
@@ -1439,6 +1643,7 @@ def api_pdf():
             diseno_detalle=resultado.get("diseno_detalle"),
             imagen_esfuerzos_zapata_png=img_zapata_bytes,
             tipo_muro=resultado.get("tipo_muro", "voladizo"),
+            norma=d.get("norma", "NSR10"),
         )
 
         import io

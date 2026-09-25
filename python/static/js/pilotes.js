@@ -20,6 +20,8 @@ function pilReadMag(el) {
 
 function pilRecolectar() {
   return {
+    norma: ($('#pil_norma') && $('#pil_norma').value) || 'NSR10',
+    tipo_suelo: ($('#pil_tsuelo') && $('#pil_tsuelo').value) || 'arena',
     P_servicio: pilReadMag($('#pil_P')) || 0,
     factor_carga: parseFloat($('#pil_fcarga').value) || 1.5,
     f_s: pilReadMag($('#pil_fs')) || 0,
@@ -40,6 +42,20 @@ function pilRecolectar() {
 
 const _ptf = kN => fromSI(kN, 'force');       // kN → tonf
 const _ptm = kPa => fromSI(kPa, 'pressure');  // kPa → tonf/m²
+
+/* Muestra/oculta campos y etiquetas según la norma seleccionada. */
+function pilAplicarNorma() {
+  const n = ($('#pil_norma') && $('#pil_norma').value) || 'NSR10';
+  $$('.pil-norma-cond').forEach(el => {
+    el.style.display = (el.getAttribute('data-norma') === n) ? '' : 'none';
+  });
+  const lbl = $('#pk-cap-label');
+  if (lbl) lbl.textContent = (n === 'CCP14') ? 'R_r factorada' : 'Q admisible';
+  const hint = $('#pil-norma-hint');
+  if (hint) hint.innerHTML = (n === 'CCP14')
+    ? 'LRFD: R<sub>r</sub> = φ<sub>s</sub>·Q<sub>fuste</sub> + φ<sub>p</sub>·Q<sub>punta</sub> ≥ P<sub>u</sub>. El diseño ajusta L/N° para cumplir.'
+    : 'Esfuerzos admisibles: Q<sub>adm</sub> = Q<sub>últ</sub>/FS ≥ carga de servicio por pilote.';
+}
 
 async function pilCalcular() {
   const payload = pilRecolectar();
@@ -67,13 +83,16 @@ async function pilCalcular() {
 
 function pilRender(res) {
   const d = res.diseno, e = res.estructural, g = res.geotecnia;
+  const ccp = (res.norma === 'CCP14') || (g.norma === 'CCP14');
   const set = (id, v) => { const el = $('#' + id); if (el) el.textContent = v; };
   set('pk-n', d.N_pilotes);
   set('pk-d', d.D_m.toFixed(2));
   set('pk-l', d.L_m.toFixed(2));
   set('pk-as', e.A_st_cm2.toFixed(1));
   set('pk-phipn', _ptf(e.phiPn_kN).toFixed(1));
-  set('pk-qadm', _ptf(g.Qadm_kN).toFixed(1));
+  set('pk-qadm', _ptf(ccp ? g.R_r_kN : g.Qadm_kN).toFixed(1));
+  const capLbl = $('#pk-cap-label');
+  if (capLbl) capLbl.textContent = ccp ? 'R_r factorada' : 'Q admisible';
 
   const ok = (b) => b ? '<span style="color:var(--green-300)">cumple</span>'
                       : '<span style="color:var(--status-err-tx)">no cumple</span>';
@@ -88,11 +107,16 @@ function pilRender(res) {
   const avisos = (res.avisos && res.avisos.length)
     ? `<div class="hint" style="border-color:var(--status-warn-bd);color:var(--status-warn-tx)">⚠ ${res.avisos.join('<br>⚠ ')}</div>` : '';
 
+  const geoLine = ccp
+    ? `<div class="pil-line"><b>Geotecnia (CCP-14):</b> Q<sub>punta</sub>=${_ptf(g.Qpunta_kN).toFixed(1)} + Q<sub>fuste</sub>=${_ptf(g.Qfuste_kN).toFixed(1)} = Q<sub>últ</sub>=${_ptf(g.Qult_kN).toFixed(1)} tonf →
+       R<sub>r</sub>=φ·Q=${_ptf(g.R_r_kN).toFixed(1)} tonf (φ ${g.phi_fuste}/${g.phi_punta}) · P<sub>u</sub>/pilote=${_ptf(g.Pu_pilote_kN).toFixed(1)} · CDR=${g.CDR} → ${ok(g.cumple)}</div>`
+    : `<div class="pil-line"><b>Geotecnia (NSR-10):</b> Q<sub>punta</sub>=${_ptf(g.Qpunta_kN).toFixed(1)} + Q<sub>fuste</sub>=${_ptf(g.Qfuste_kN).toFixed(1)} → Q<sub>adm</sub>=${_ptf(g.Qadm_kN).toFixed(1)} tonf (FS=${g.FS}) · P/pilote=${_ptf(g.Pserv_pilote_kN).toFixed(1)} · D/C=${g.ratio} → ${ok(g.cumple)}</div>`;
+
   $('#pil-detalle').innerHTML = `
     <div class="pil-line"><b>Diseño:</b> ${d.N_pilotes} pilote(s) de Ø${(d.D_m * 100).toFixed(0)} cm · L = ${d.L_m.toFixed(2)} m ${autoTxt ? `<span class="muted">(${autoTxt})</span>` : ''}</div>
     <div class="pil-line"><b>Acero longitudinal:</b> ${e.n_barras} Ø${e.db_long_mm} (${e.A_st_cm2.toFixed(1)} cm², ρ = ${e.cuantia_pct}%) · transversal: ${tr}</div>
     <div class="pil-line"><b>Estructural:</b> φPn = ${_ptf(e.phiPn_kN).toFixed(1)} tonf · Pu/pilote = ${_ptf(e.Pu_pilote_kN).toFixed(1)} tonf · D/C = ${e.ratio} → ${ok(e.cumple)}</div>
-    <div class="pil-line"><b>Geotecnia:</b> Q<sub>punta</sub>=${_ptf(g.Qpunta_kN).toFixed(1)} + Q<sub>fuste</sub>=${_ptf(g.Qfuste_kN).toFixed(1)} → Q<sub>adm</sub>=${_ptf(g.Qadm_kN).toFixed(1)} tonf · P/pilote=${_ptf(g.Pserv_pilote_kN).toFixed(1)} · D/C=${g.ratio} → ${ok(g.cumple)}</div>
+    ${geoLine}
     <div class="pil-line"><b>Volumen de concreto:</b> ${d.volumen_concreto_m3} m³ (${d.N_pilotes} pilotes)</div>
     ${avisos}`;
 }
@@ -226,6 +250,11 @@ document.addEventListener('DOMContentLoaded', () => {
   // Toggle 2D / 3D del esquema
   $$('[data-vista-pile]').forEach(b =>
     b.addEventListener('click', () => setVistaPile(b.getAttribute('data-vista-pile'))));
+
+  // Selector de norma → muestra/oculta campos
+  const selN = $('#pil_norma');
+  if (selN) selN.addEventListener('change', pilAplicarNorma);
+  pilAplicarNorma();
 
   window.pilMostrar = pilMostrar;
   window.pilGenerarPDF = pilGenerarPDF;
