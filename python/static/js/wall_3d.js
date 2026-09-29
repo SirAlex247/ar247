@@ -82,8 +82,9 @@ window.CimXWall3D = (function () {
     });
     // Pasto frontal (verde)
     g.add(extrudeMesh(gr.front_grass, L, COL.grass, { roughness: 1.0, opacity: 0.6 }));
-    // Concreto: zapata + vástago/cuerpo, con aristas marcadas (primero, opacos)
+    // Concreto: zapata + vástago/cuerpo (+ diente), con aristas marcadas
     g.add(extrudeMesh(geom.zapata, L, COL.concrete, { edges: true }));
+    if (geom.diente) g.add(extrudeMesh(geom.diente, L, COL.concrete, { edges: true }));
     g.add(extrudeMesh(geom.vastago || geom.cuerpo, L, COL.concrete, { edges: true }));
     // Relleno (ocre) translúcido — se dibuja al final para leerse como
     // masa de tierra retenida sin tapar el muro ni la zapata.

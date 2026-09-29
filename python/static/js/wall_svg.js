@@ -96,6 +96,20 @@ window.CimXWallSVG = (function () {
       [0, 0], [B, 0], [B, e_zapata], [0, e_zapata]
     ];
 
+    // Diente de cortante (llave) bajo la zapata, si se especifica.
+    const h_diente = (d.h_diente && d.h_diente > 0) ? d.h_diente : 0;
+    const b_diente = (d.b_diente && d.b_diente > 0) ? d.b_diente : 0;
+    let diente = null;
+    if (h_diente > 0 && b_diente > 0) {
+      const xdRaw = parseFloat(d.x_diente);
+      const xd = (d.x_diente != null && d.x_diente !== '' && !isNaN(xdRaw)) ? xdRaw : 0;
+      const x0 = Math.max(0, Math.min(xd, B - b_diente));
+      diente = [
+        [x0, 0], [x0 + b_diente, 0],
+        [x0 + b_diente, -h_diente], [x0, -h_diente],
+      ];
+    }
+
     // Relleno detrás del vástago, sobre el talón. La cara izquierda sigue la
     // cara posterior del vástago (inclinada si hay acartelamiento posterior).
     const xbp = vast_x_right;                                  // cara posterior, base
@@ -188,20 +202,23 @@ window.CimXWallSVG = (function () {
       ymax_total = Math.max(ymax_total, max_y_sob + 0.2);
     }
 
+    const ymin_total = Math.min(-margin_y, diente ? -(h_diente + 0.3) : 0);
+
     return {
       tipo: 'voladizo',
-      vastago, zapata, relleno, ground,
+      vastago, zapata, diente, relleno, ground,
       sobrecarga: sobrecarga_polygon,
       cotas: {
         B, H_vastago, e_zapata, b_puntera, b_talon, b_corona, b_base_vast,
         D, H_relleno, alpha, terr_y,
         a_frontal_v: af, a_posterior_v: ap,
+        h_diente, b_diente,
         sobrecarga: q,
         sobrecarga_height_m,
       },
       bbox: {
         xmin: -margin_x, xmax: B + margin_x,
-        ymin: -margin_y, ymax: ymax_total,
+        ymin: ymin_total, ymax: ymax_total,
       },
     };
   }
@@ -442,8 +459,11 @@ window.CimXWallSVG = (function () {
       });
     }
 
-    // ─── 3. Muro (zapata + vástago/cuerpo) ───
+    // ─── 3. Muro (zapata + vástago/cuerpo + diente) ───
     svg += polygon(dims.zapata,  sx, sy, STYLE.concrete, STYLE.concreteEdge, 0.9);
+    if (dims.diente) {
+      svg += polygon(dims.diente, sx, sy, STYLE.concreteShadow, STYLE.concreteEdge, 0.9);
+    }
     svg += polygon(dims.vastago || dims.cuerpo, sx, sy, STYLE.concrete, STYLE.concreteEdge, 0.9);
 
     // ─── 4. Cotas ───

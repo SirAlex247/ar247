@@ -135,11 +135,12 @@ const MODULO_VIEW = {
   caisson: 'caisson', caissonreport: 'caisson',
   dado: 'dado', dadoreport: 'dado',
   maquina: 'maquina', maquinareport: 'maquina',
-  mse: 'mse', msereport: 'mse',
-  anclado: 'anclado', ancladoreport: 'anclado',
+  // Tierra armada (MSE) y muro anclado son subtipos del módulo de muros.
+  mse: 'muro', msereport: 'muro',
+  anclado: 'muro', ancladoreport: 'muro',
 };
-const MODULO_DEFAULT_VIEW = { muro: 'summary', pilote: 'piles', zapata: 'footing', placa: 'placa', caisson: 'caisson', dado: 'dado', maquina: 'maquina', mse: 'mse', anclado: 'anclado' };
-const MODULO_NOMBRE = { muro: 'Muros de contención', pilote: 'Pilotes', zapata: 'Zapatas', placa: 'Placas macizas', caisson: 'Caissons / pilas', dado: 'Dados / Cabezales', maquina: 'Cimentación de máquinas', mse: 'Tierra armada (MSE)', anclado: 'Muro anclado' };
+const MODULO_DEFAULT_VIEW = { muro: 'summary', pilote: 'piles', zapata: 'footing', placa: 'placa', caisson: 'caisson', dado: 'dado', maquina: 'maquina' };
+const MODULO_NOMBRE = { muro: 'Muros de contención', pilote: 'Pilotes', zapata: 'Zapatas', placa: 'Placas macizas', caisson: 'Caissons / pilas', dado: 'Dados / Cabezales', maquina: 'Cimentación de máquinas' };
 
 function etiquetarModulos() {
   // Asigna data-module a las vistas y a las acciones del header propias del muro.
@@ -171,7 +172,12 @@ function seleccionarModulo(mod) {
   const tag = $('.brand-tagline');
   if (tag) tag.textContent = MODULO_NOMBRE[mod] || 'Diseño Geotécnico';
   showView(MODULO_DEFAULT_VIEW[mod]);
-  if (mod === 'muro') setTimeout(actualizarVistaPrevia, 60);
+  if (mod === 'muro') {
+    // Respeta el subtipo elegido (MSE / anclado navegan a su propia página)
+    // y aplica la visibilidad por flujo.
+    if (typeof aplicarTipoMuro === 'function') aplicarTipoMuro();
+    setTimeout(actualizarVistaPrevia, 60);
+  }
 }
 
 function irADashboard() {
@@ -303,19 +309,54 @@ function recolectar() {
 }
 
 /* ---------- Tipo de muro toggle ---------- */
-function aplicarTipoMuro() {
+/* Familia de flujo según el tipo de muro elegido. */
+function _familiaMuro(t) {
+  if (t === 'mse') return 'mse';
+  if (t === 'anclado') return 'anclado';
+  return 'concreto';   // voladizo / gravedad / contrafuertes
+}
+
+/* Fija el tipo de muro en TODOS los selectores (principal + sincronizados)
+   y aplica los cambios de interfaz. */
+function setTipoMuro(t, navegar = true) {
+  $$('#tipo_muro, .tipo-muro-sync').forEach(s => { if (s.value !== t) s.value = t; });
+  aplicarTipoMuro(navegar);
+}
+
+function aplicarTipoMuro(navegar = true) {
   const t = $('#tipo_muro').value;
-  // Contrafuertes comparte la geometría del voladizo (pantalla + zapata).
-  $('#geom-voladizo').style.display = (t === 'gravedad') ? 'none' : '';
-  $('#geom-gravedad').style.display = (t === 'gravedad') ? '' : 'none';
+  const familia = _familiaMuro(t);
+  const esConcreto = familia === 'concreto';
+
+  // Tarjetas de geometría (solo para muros de concreto).
+  const gv = $('#geom-voladizo'); if (gv) gv.style.display = (t === 'gravedad' || !esConcreto) ? 'none' : '';
+  const gg = $('#geom-gravedad'); if (gg) gg.style.display = (t === 'gravedad') ? '' : 'none';
   const cfParams = $('#contrafuerte-params');
   if (cfParams) cfParams.style.display = (t === 'contrafuertes') ? '' : 'none';
+
+  // Método de empuje: gravedad → Coulomb; concreto → Rankine.
   const sel = $('#metodo_empuje');
   if (sel) {
     if (t === 'gravedad' && sel.value !== 'coulomb') sel.value = 'coulomb';
-    if (t !== 'gravedad' && sel.value !== 'rankine')  sel.value = 'rankine';
+    if (esConcreto && t !== 'gravedad' && sel.value !== 'rankine') sel.value = 'rankine';
   }
-  actualizarVistaPrevia();
+
+  // Visibilidad por flujo: items de nav y acciones de cabecera con
+  // data-flow que no corresponden a la familia activa se ocultan.
+  $$('[data-flow]').forEach(el => {
+    el.classList.toggle('fuera-de-tipo', el.dataset.flow !== familia);
+  });
+
+  // Navegación: los subtipos MSE/anclado tienen su propia página.
+  if (navegar) {
+    const cur = $('.view.active');
+    const v = cur ? cur.dataset.view : '';
+    if (familia === 'mse' && v !== 'msereport' && v !== 'mse') showView('mse');
+    else if (familia === 'anclado' && v !== 'ancladoreport' && v !== 'anclado') showView('anclado');
+    else if (esConcreto && ['mse', 'msereport', 'anclado', 'ancladoreport'].includes(v)) showView('geometry');
+  }
+
+  if (esConcreto) actualizarVistaPrevia();
 }
 
 /* ---------- Vista previa del muro (2D SVG nativo + 3D Three.js) ---------- */
@@ -355,6 +396,9 @@ function _datosMuro() {
     H_relleno:   parseFloat($('#H_relleno').value)   || 0,
     alpha:       parseFloat($('#alpha').value)       || 0,
     sobrecarga:  parseFloat($('#sobrecarga').value)  || 0,
+    h_diente:    parseFloat($('#h_diente').value)    || 0,
+    b_diente:    parseFloat($('#b_diente').value)    || 0,
+    x_diente:    ($('#x_diente') ? $('#x_diente').value : ''),
   }};
 }
 
@@ -863,10 +907,14 @@ function bindAll() {
   $('#btn-analyze').addEventListener('click', ejecutarAnalisis);
   $('#btn-pdf').addEventListener('click', generarPDF);
   $('#btn-preview').addEventListener('click', actualizarVistaPrevia);
-  $('#tipo_muro').addEventListener('change', () => {
-    aplicarTipoMuro();
-    actualizarVistaPrevia();
+  // Selector de tipo de muro (principal) + selectores sincronizados en las
+  // vistas de subtipos (MSE / anclado). Comparten las mismas opciones.
+  const _tipoMain = $('#tipo_muro');
+  $$('.tipo-muro-sync').forEach(s => {
+    if (_tipoMain) s.innerHTML = _tipoMain.innerHTML;
+    s.addEventListener('change', () => setTipoMuro(s.value));
   });
+  if (_tipoMain) _tipoMain.addEventListener('change', () => setTipoMuro(_tipoMain.value));
 
   // Norma: muestra las opciones CCP-14 (roca, γ_EQ) solo cuando aplica.
   const _norma = $('#norma');
@@ -913,8 +961,8 @@ function bindAll() {
     btn.addEventListener('click', () => setVistaMuro(btn.getAttribute('data-vista-btn')));
   });
 
-  // Inicial
-  aplicarTipoMuro();
+  // Inicial (sincroniza selectores y aplica visibilidad sin forzar navegación)
+  setTipoMuro((_tipoMain && _tipoMain.value) || 'voladizo', false);
   setEstadoIdle();
   // Vista previa al cargar
   setTimeout(actualizarVistaPrevia, 100);

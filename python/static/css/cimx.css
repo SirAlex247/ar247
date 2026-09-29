@@ -1100,3 +1100,8 @@ body.en-dashboard .app { display: none; }
 /* Aislamiento de módulos: el JS marca con .fuera-de-modulo todo lo que
    no pertenece al módulo activo (sirve para cualquier módulo presente o futuro). */
 .fuera-de-modulo { display: none !important; }
+
+/* Dentro del módulo de muros, el JS marca con .fuera-de-tipo los elementos
+   (items de nav, acciones de cabecera) que no aplican al tipo de muro elegido
+   (voladizo/gravedad/contrafuertes vs. tierra armada vs. anclado). */
+.fuera-de-tipo { display: none !important; }

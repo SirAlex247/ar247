@@ -29,7 +29,7 @@
       <button class="module-card" data-modulo-sel="muro">
         <div class="mc-icon"><svg viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M5 21V8l7-5 7 5v13"/><path d="M9 21V12h6v9"/></svg></div>
         <div class="mc-title">Muros de contención</div>
-        <div class="mc-desc">Voladizo y gravedad · estabilidad, empujes y sismo · diseño estructural por NSR-10 o CCP-14 · vista 3D.</div>
+        <div class="mc-desc">Voladizo, gravedad, contrafuertes, tierra armada (MSE) y anclado — elige el tipo dentro del módulo · estabilidad, empujes, sismo, estabilidad global y diseño estructural (NSR-10 / CCP-14) · vista 3D.</div>
         <div class="mc-badge ok">Disponible</div>
       </button>
 
@@ -75,19 +75,6 @@
         <div class="mc-badge ok">Disponible</div>
       </button>
 
-      <button class="module-card" data-modulo-sel="mse">
-        <div class="mc-icon"><svg viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M4 21V7h11v14"/><path d="M4 11h11"/><path d="M4 15h11"/><path d="M15 9l5-2v14"/></svg></div>
-        <div class="mc-title">Tierra armada (MSE)</div>
-        <div class="mc-desc">Muro de suelo reforzado (geosintético o metálico) · método simplificado FHWA/AASHTO · estabilidad interna (rotura y arrancamiento capa a capa) y externa.</div>
-        <div class="mc-badge ok">Disponible</div>
-      </button>
-
-      <button class="module-card" data-modulo-sel="anclado">
-        <div class="mc-icon"><svg viewBox="0 0 24 24"><path d="M5 3v18"/><path d="M5 6l14 4"/><path d="M5 12l14 4"/><path d="M5 18h13"/></svg></div>
-        <div class="mc-title">Muro anclado</div>
-        <div class="mc-desc">Pantalla con anclajes al terreno · presiones aparentes (Terzaghi-Peck / FHWA) · cargas de anclaje, longitud de bulbo y libre, y momento de la pantalla.</div>
-        <div class="mc-badge ok">Disponible</div>
-      </button>
     </div>
 
     <div class="dash-foot">CimX v1.0 · NSR-10 / CCP-14 · Colombia</div>
@@ -114,30 +101,48 @@
 
       <!-- ───── Módulo: MURO ───── -->
       <div class="nav-section" data-module="muro">Diseño del muro</div>
-      <button class="nav-item" data-view="summary" data-module="muro">
+      <button class="nav-item" data-view="summary" data-module="muro" data-flow="concreto">
         <svg class="icon" viewBox="0 0 24 24"><path d="M3 12l2-2 4 4 8-8 4 4"/><path d="M3 21h18"/></svg>
         <span class="label">Resumen</span>
       </button>
       <button class="nav-item" data-view="geometry" data-module="muro">
         <svg class="icon" viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M5 21V8l7-5 7 5v13"/><path d="M9 21V12h6v9"/></svg>
-        <span class="label">Geometría</span>
+        <span class="label">Tipo y geometría</span>
       </button>
-      <button class="nav-item" data-view="soils" data-module="muro">
+      <button class="nav-item" data-view="soils" data-module="muro" data-flow="concreto">
         <svg class="icon" viewBox="0 0 24 24"><path d="M2 22h20"/><path d="M2 16c4-2 8-2 12 0s8 2 8 0"/><path d="M2 12c4-2 8-2 12 0s8 2 8 0"/><path d="M2 8c4-2 8-2 12 0s8 2 8 0"/></svg>
         <span class="label">Suelos</span>
       </button>
-      <button class="nav-item" data-view="loads" data-module="muro">
+      <button class="nav-item" data-view="loads" data-module="muro" data-flow="concreto">
         <svg class="icon" viewBox="0 0 24 24"><path d="M12 2v8"/><path d="M8 6l4-4 4 4"/><path d="M3 14h18"/><path d="M5 18h14"/><path d="M7 22h10"/></svg>
         <span class="label">Cargas y Sismo</span>
       </button>
-      <button class="nav-item" data-view="materials" data-module="muro">
+      <button class="nav-item" data-view="materials" data-module="muro" data-flow="concreto">
         <svg class="icon" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
         <span class="label">Materiales</span>
       </button>
-      <div class="nav-section" data-module="muro">Análisis</div>
-      <button class="nav-item" data-view="results" data-module="muro">
+      <div class="nav-section" data-module="muro" data-flow="concreto">Análisis</div>
+      <button class="nav-item" data-view="results" data-module="muro" data-flow="concreto">
         <svg class="icon" viewBox="0 0 24 24"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
         <span class="label">Resultados</span>
+      </button>
+      <!-- Tierra armada (MSE) — subtipo del módulo de muros -->
+      <button class="nav-item" data-view="mse" data-module="muro" data-flow="mse">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M4 21V7h11v14"/><path d="M4 11h11"/><path d="M4 15h11"/><path d="M15 9l5-2v14"/></svg>
+        <span class="label">Diseño MSE</span>
+      </button>
+      <button class="nav-item" data-view="msereport" data-module="muro" data-flow="mse">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>
+        <span class="label">Memoria MSE</span>
+      </button>
+      <!-- Muro anclado — subtipo del módulo de muros -->
+      <button class="nav-item" data-view="anclado" data-module="muro" data-flow="anclado">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M5 3v18"/><path d="M5 6l14 4"/><path d="M5 12l14 4"/><path d="M5 18h13"/></svg>
+        <span class="label">Diseño anclado</span>
+      </button>
+      <button class="nav-item" data-view="ancladoreport" data-module="muro" data-flow="anclado">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>
+        <span class="label">Memoria anclado</span>
       </button>
 
       <!-- ───── Módulo: PILOTE ───── -->
@@ -205,31 +210,9 @@
         <span class="label">Memoria de cálculo</span>
       </button>
 
-      <!-- ───── Módulo: TIERRA ARMADA (MSE) ───── -->
-      <div class="nav-section" data-module="mse">Tierra armada (MSE)</div>
-      <button class="nav-item" data-view="mse" data-module="mse">
-        <svg class="icon" viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M4 21V7h11v14"/><path d="M4 11h11"/><path d="M4 15h11"/><path d="M15 9l5-2v14"/></svg>
-        <span class="label">Diseño MSE</span>
-      </button>
-      <button class="nav-item" data-view="msereport" data-module="mse">
-        <svg class="icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>
-        <span class="label">Memoria de cálculo</span>
-      </button>
-
-      <!-- ───── Módulo: MURO ANCLADO ───── -->
-      <div class="nav-section" data-module="anclado">Muro anclado</div>
-      <button class="nav-item" data-view="anclado" data-module="anclado">
-        <svg class="icon" viewBox="0 0 24 24"><path d="M5 3v18"/><path d="M5 6l14 4"/><path d="M5 12l14 4"/><path d="M5 18h13"/></svg>
-        <span class="label">Diseño anclado</span>
-      </button>
-      <button class="nav-item" data-view="ancladoreport" data-module="anclado">
-        <svg class="icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>
-        <span class="label">Memoria de cálculo</span>
-      </button>
-
       <!-- ───── Compartido ───── -->
-      <div class="nav-section" data-module="muro pilote zapata placa caisson dado maquina mse anclado">Proyecto</div>
-      <button class="nav-item" data-view="project" data-module="muro pilote zapata placa caisson dado maquina mse anclado">
+      <div class="nav-section" data-module="muro pilote zapata placa caisson dado maquina">Proyecto</div>
+      <button class="nav-item" data-view="project" data-module="muro pilote zapata placa caisson dado maquina">
         <svg class="icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
         <span class="label">Datos del Proyecto</span>
       </button>
@@ -248,7 +231,7 @@
       <small id="header-title-small">Vista general y verificaciones</small>
     </div>
 
-    <div class="proj-selector" title="Proyecto activo" data-module="muro">
+    <div class="proj-selector" title="Proyecto activo" data-module="muro" data-flow="concreto">
       <svg class="icon" viewBox="0 0 24 24"><path d="M3 7h18M3 12h18M3 17h18"/></svg>
       <div>
         <div class="label">Proyecto actual</div>
@@ -256,7 +239,7 @@
       </div>
     </div>
 
-    <div class="status-pill idle" id="estado-pill" data-module="muro">
+    <div class="status-pill idle" id="estado-pill" data-module="muro" data-flow="concreto">
       <svg class="icon" viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
       <div>
         <div class="label">Estado del diseño</div>
@@ -276,15 +259,15 @@
       </button>
       <input type="file" id="input-abrir-proy" accept=".json,application/json" style="display:none">
       <!-- Muro -->
-      <button class="btn btn-secondary" id="btn-preview" data-module="muro" title="Actualizar vista previa">
+      <button class="btn btn-secondary" id="btn-preview" data-module="muro" data-flow="concreto" title="Actualizar vista previa">
         <svg class="icon" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
         <span>Actualizar</span>
       </button>
-      <button class="btn btn-primary" id="btn-analyze" data-module="muro">
+      <button class="btn btn-primary" id="btn-analyze" data-module="muro" data-flow="concreto">
         <svg class="icon" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
         <span>Ejecutar análisis</span>
       </button>
-      <button class="btn btn-secondary" id="btn-pdf" data-module="muro">
+      <button class="btn btn-secondary" id="btn-pdf" data-module="muro" data-flow="concreto">
         <svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         <span>Generar PDF</span>
       </button>
@@ -452,9 +435,15 @@
             <div class="field">
               <label class="field-label">Tipo</label>
               <select id="tipo_muro" class="input">
-                <option value="voladizo" selected>Voladizo (cantilever)</option>
-                <option value="gravedad">Gravedad (trapezoidal)</option>
-                <option value="contrafuertes">Con contrafuertes (counterfort)</option>
+                <optgroup label="Concreto reforzado">
+                  <option value="voladizo" selected>Voladizo (cantilever)</option>
+                  <option value="gravedad">Gravedad (trapezoidal)</option>
+                  <option value="contrafuertes">Con contrafuertes (counterfort)</option>
+                </optgroup>
+                <optgroup label="Suelo reforzado / anclado">
+                  <option value="mse">Tierra armada (MSE)</option>
+                  <option value="anclado">Muro anclado</option>
+                </optgroup>
               </select>
             </div>
             <div class="field-row" id="contrafuerte-params" style="display:none">
@@ -1702,16 +1691,20 @@
     </section>
 
     <!-- ===== VISTA: TIERRA ARMADA (MSE) ===== -->
-    <section class="view" data-view="mse" data-module="mse">
+    <section class="view" data-view="mse" data-module="muro">
       <div class="view-header">
         <div>
           <div class="view-title">Muro de tierra armada (MSE)</div>
           <div class="view-subtitle">Suelo reforzado — método simplificado FHWA (NHI-10-024) / AASHTO · estabilidad interna y externa</div>
         </div>
-        <button class="btn btn-primary" id="btn-mse-calc" type="button">
-          <svg class="icon" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-          <span>Calcular</span>
-        </button>
+        <div style="display:flex;gap:10px;align-items:center">
+          <label class="muted" style="font-size:12px">Tipo de muro</label>
+          <select class="input tipo-muro-sync" style="width:auto;min-width:180px"></select>
+          <button class="btn btn-primary" id="btn-mse-calc" type="button">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+            <span>Calcular</span>
+          </button>
+        </div>
       </div>
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start">
@@ -1814,7 +1807,7 @@
     </section>
 
     <!-- ===== VISTA: MSE MEMORIA ===== -->
-    <section class="view" data-view="msereport" data-module="mse">
+    <section class="view" data-view="msereport" data-module="muro">
       <div class="view-header">
         <div>
           <div class="view-title">Memoria de cálculo</div>
@@ -1838,16 +1831,20 @@
     </section>
 
     <!-- ===== VISTA: MURO ANCLADO (diseño) ===== -->
-    <section class="view" data-view="anclado" data-module="anclado">
+    <section class="view" data-view="anclado" data-module="muro">
       <div class="view-header">
         <div>
           <div class="view-title">Muro anclado</div>
           <div class="view-subtitle">Pantalla con anclajes al terreno — presiones aparentes (Terzaghi-Peck / FHWA GEC-4)</div>
         </div>
-        <button class="btn btn-primary" id="btn-anc-calc" type="button">
-          <svg class="icon" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-          <span>Calcular</span>
-        </button>
+        <div style="display:flex;gap:10px;align-items:center">
+          <label class="muted" style="font-size:12px">Tipo de muro</label>
+          <select class="input tipo-muro-sync" style="width:auto;min-width:180px"></select>
+          <button class="btn btn-primary" id="btn-anc-calc" type="button">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+            <span>Calcular</span>
+          </button>
+        </div>
       </div>
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start">
@@ -1947,7 +1944,7 @@
     </section>
 
     <!-- ===== VISTA: MURO ANCLADO MEMORIA ===== -->
-    <section class="view" data-view="ancladoreport" data-module="anclado">
+    <section class="view" data-view="ancladoreport" data-module="muro">
       <div class="view-header">
         <div>
           <div class="view-title">Memoria de cálculo</div>
