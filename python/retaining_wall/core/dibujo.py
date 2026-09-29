@@ -458,6 +458,123 @@ def figura_a_png(fig: plt.Figure, dpi: int = 160) -> bytes:
 
 
 # =============================================================================
+# ESTABILIDAD GLOBAL — círculo de falla crítico (método de dovelas)
+# =============================================================================
+def dibujar_estabilidad_global(muro: MuroContencion, resultado,
+                               figsize: tuple[float, float] = (14, 9)) -> plt.Figure:
+    """Dibuja el muro, el perfil del terreno y el círculo de falla crítico con
+    las dovelas, anotando el factor de seguridad global mínimo.
+
+    Args:
+        muro:      Muro de contención.
+        resultado: ``ResultadoEstabilidadGlobal`` de ``EstabilidadGlobalMuro``.
+    """
+    from .estabilidad_global import EstabilidadGlobalMuro
+
+    g = muro.geometria
+    an = EstabilidadGlobalMuro(muro)          # reutiliza el perfil físico
+    circ = resultado.circulo
+    xc, yc, R = circ.xc, circ.yc, circ.R
+
+    fig, ax = plt.subplots(figsize=figsize)
+    plt.rcParams["hatch.linewidth"] = 0.5
+
+    # --- Límites ---
+    x_ent = min(circ.x_entrada, -0.5)
+    x_sal = max(circ.x_salida, g.B + 0.5)
+    span = x_sal - x_ent
+    x_min = x_ent - span * 0.12
+    x_max = x_sal + span * 0.12
+    y_min = min(-max(g.D, g.h_diente) - 1.0, yc - R - 0.5)
+    y_max = max(g.H_total, an.H_suelo, yc + 0.5) + 1.2
+
+    # --- Suelo de cimentación (bajo y = 0) ---
+    ax.add_patch(mpatches.Rectangle(
+        (x_min, y_min), x_max - x_min, -y_min,
+        facecolor=COLOR_CIMIENTO, alpha=0.35, edgecolor="none", zorder=1))
+
+    # --- Perfil físico del terreno (relleno + cobertura frontal) ---
+    xs = [x_min + (x_max - x_min) * k / 400 for k in range(401)]
+    ys = [an._top_fisico(x) for x in xs]
+    ax.fill_between(xs, ys, y_min, color=COLOR_RELLENO, alpha=0.30,
+                    zorder=2, linewidth=0)
+    ax.plot(xs, ys, color=COLOR_RELLENO_LN, lw=1.6, zorder=4)
+    ax.plot([x_min, x_max], [0, 0], color="black", lw=0.8, ls="--", alpha=0.4)
+
+    # --- Nivel freático ---
+    if an.y_w is not None:
+        ax.plot([x_min, x_max], [an.y_w, an.y_w], color="#1e88e5", lw=1.2,
+                ls="-.", alpha=0.8, zorder=5)
+        ax.annotate("N.F.", xy=(x_min + 0.2, an.y_w + 0.12), color="#1e88e5",
+                    fontsize=9, fontweight="bold", zorder=6)
+
+    # --- Muro (concreto): zapata + vástago + diente ---
+    ax.add_patch(mpatches.Rectangle(
+        (0, 0), g.B, g.e_zapata, facecolor=COLOR_CONCRETO,
+        edgecolor=COLOR_CONCRETO_HATCH, lw=1.4, hatch="xxx", zorder=6))
+    ax.add_patch(mpatches.Polygon([
+        (g.x_cara_frontal_base, g.e_zapata),
+        (g.x_cara_posterior_base, g.e_zapata),
+        (g.x_cara_posterior_corona, g.H_total),
+        (g.x_cara_frontal_corona, g.H_total)], closed=True,
+        facecolor=COLOR_CONCRETO, edgecolor=COLOR_CONCRETO_HATCH, lw=1.4,
+        hatch="xxx", zorder=6))
+    if g.tiene_diente:
+        ax.add_patch(mpatches.Rectangle(
+            (g.x_diente_ef, -g.h_diente), g.b_diente, g.h_diente,
+            facecolor=COLOR_CONCRETO, edgecolor=COLOR_CONCRETO_HATCH, lw=1.4,
+            hatch="xxx", zorder=6))
+
+    # --- Superficie de falla (arco inferior del círculo) ---
+    xa = [circ.x_entrada + (circ.x_salida - circ.x_entrada) * k / 200
+          for k in range(201)]
+    ya = []
+    for x in xa:
+        rad = R * R - (x - xc) ** 2
+        ya.append(yc - math.sqrt(rad) if rad > 0 else yc)
+    cumple = resultado.cumple
+    col_falla = "#2e7d32" if cumple else "#c0392b"
+    ax.plot(xa, ya, color=col_falla, lw=2.6, zorder=8,
+            label="Superficie de falla crítica")
+
+    # --- Dovelas (líneas verticales) ---
+    for d in resultado.dovelas[::max(1, len(resultado.dovelas) // 18)]:
+        x = d["x"]
+        ax.plot([x, x], [d["y_b"], an._top_fisico(x)],
+                color=col_falla, lw=0.5, alpha=0.5, zorder=7)
+
+    # --- Centro y radios ---
+    ax.plot([xc], [yc], marker="+", color=col_falla, ms=14, mew=2.2, zorder=9)
+    ax.plot([xc, xa[0]], [yc, ya[0]], color=col_falla, lw=0.8, ls=":",
+            alpha=0.7, zorder=7)
+    ax.plot([xc, xa[-1]], [yc, ya[-1]], color=col_falla, lw=0.8, ls=":",
+            alpha=0.7, zorder=7)
+
+    # --- Etiqueta del FS ---
+    estado = "CUMPLE" if cumple else "NO CUMPLE"
+    ax.annotate(
+        f"FS_global = {resultado.FS_min:.2f}\n(≥ {resultado.FS_requerido:.1f}: {estado})",
+        xy=(xc, yc), xytext=(xc + span * 0.02, yc + 0.15),
+        fontsize=12, fontweight="bold", color=col_falla,
+        ha="left", va="bottom", zorder=10,
+        bbox=dict(boxstyle="round,pad=0.4", fc="white", ec=col_falla, lw=1.4))
+
+    _estilo_tecnico(ax, fig, grid=True)
+    ax.set_xlim(x_min, x_max)
+    ax.set_ylim(y_min, y_max)
+    ax.set_aspect("equal", adjustable="box")
+    ax.set_xlabel("x (m)")
+    ax.set_ylabel("y (m)")
+    ax.set_title(
+        f"Estabilidad global — {resultado.metodo.capitalize()} "
+        f"(FS mín = {resultado.FS_min:.2f})",
+        fontsize=13, fontweight="bold")
+    ax.legend(loc="lower right", fontsize=9, framealpha=0.9)
+    plt.tight_layout()
+    return fig
+
+
+# =============================================================================
 # DIAGRAMA DE EMPUJES LATERALES (para el reporte)
 # =============================================================================
 def dibujar_diagrama_empujes(muro: MuroContencion,

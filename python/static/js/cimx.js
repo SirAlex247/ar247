@@ -91,6 +91,10 @@ function showView(name) {
     dado: { t: 'Diseño del Dado', s: 'Cabezal/encepado sobre pilotes — NSR-10' },
     dadoreport: { t: 'Memoria de cálculo', s: 'Reporte PDF del dado / cabezal' },
     results: { t: 'Resultados', s: 'Cargas, combinaciones y diseño estructural' },
+    mse: { t: 'Tierra Armada (MSE)', s: 'Estabilidad interna (rotura y arrancamiento) y externa' },
+    msereport: { t: 'Memoria de cálculo', s: 'Reporte PDF del muro de tierra armada' },
+    anclado: { t: 'Muro Anclado', s: 'Presiones aparentes, cargas de anclaje y longitudes de bulbo' },
+    ancladoreport: { t: 'Memoria de cálculo', s: 'Reporte PDF del muro anclado' },
     project: { t: 'Datos del Proyecto', s: 'Información general del reporte' },
   };
   const meta = titles[name];
@@ -124,16 +128,18 @@ function setupNav() {
 /* ---------- Módulos (dashboard / navegación por elemento) ---------- */
 const MODULO_VIEW = {
   summary: 'muro', geometry: 'muro', soils: 'muro', loads: 'muro',
-  materials: 'muro', results: 'muro', project: 'muro pilote zapata placa caisson dado maquina',
+  materials: 'muro', results: 'muro', project: 'muro pilote zapata placa caisson dado maquina mse',
   piles: 'pilote', pilereport: 'pilote',
   footing: 'zapata', footingreport: 'zapata',
   placa: 'placa', placareport: 'placa',
   caisson: 'caisson', caissonreport: 'caisson',
   dado: 'dado', dadoreport: 'dado',
   maquina: 'maquina', maquinareport: 'maquina',
+  mse: 'mse', msereport: 'mse',
+  anclado: 'anclado', ancladoreport: 'anclado',
 };
-const MODULO_DEFAULT_VIEW = { muro: 'summary', pilote: 'piles', zapata: 'footing', placa: 'placa', caisson: 'caisson', dado: 'dado', maquina: 'maquina' };
-const MODULO_NOMBRE = { muro: 'Muros de contención', pilote: 'Pilotes', zapata: 'Zapatas', placa: 'Placas macizas', caisson: 'Caissons / pilas', dado: 'Dados / Cabezales', maquina: 'Cimentación de máquinas' };
+const MODULO_DEFAULT_VIEW = { muro: 'summary', pilote: 'piles', zapata: 'footing', placa: 'placa', caisson: 'caisson', dado: 'dado', maquina: 'maquina', mse: 'mse', anclado: 'anclado' };
+const MODULO_NOMBRE = { muro: 'Muros de contención', pilote: 'Pilotes', zapata: 'Zapatas', placa: 'Placas macizas', caisson: 'Caissons / pilas', dado: 'Dados / Cabezales', maquina: 'Cimentación de máquinas', mse: 'Tierra armada (MSE)', anclado: 'Muro anclado' };
 
 function etiquetarModulos() {
   // Asigna data-module a las vistas y a las acciones del header propias del muro.
@@ -228,7 +234,7 @@ function recolectar() {
     const _afv = inputSI('a_frontal_v') || 0;
     const _apv = inputSI('a_posterior_v') || 0;
     geom = {
-      tipo_muro:   'voladizo',
+      tipo_muro:   (tipoMuro === 'contrafuertes') ? 'contrafuertes' : 'voladizo',
       H_vastago:   inputSI('H_vastago'),
       e_zapata:    inputSI('e_zapata'),
       H_relleno,
@@ -240,8 +246,12 @@ function recolectar() {
       a_posterior_v: _apv,
       D:           inputSI('D'),
       cara_posterior_vertical: true,
-      h_diente: 0, b_diente: 0, x_diente: '',
+      h_diente: inputSI('h_diente') || 0, b_diente: inputSI('b_diente') || 0, x_diente: '',
     };
+    if (tipoMuro === 'contrafuertes') {
+      geom.contrafuerte_sep     = inputSI('contrafuerte_sep') || 3.0;
+      geom.contrafuerte_espesor = inputSI('contrafuerte_espesor') || 0.35;
+    }
   }
 
   return {
@@ -259,6 +269,7 @@ function recolectar() {
     relleno_gamma:    inputSI('relleno_gamma'),
     relleno_phi:      getF('relleno_phi'),
     relleno_cohesion: inputSI('relleno_cohesion') || 0,
+    relleno_gamma_sat: inputSI('relleno_gamma_sat'),
 
     ciment_nombre:    getS('ciment_nombre') || 'Cimentación',
     ciment_gamma:     inputSI('ciment_gamma'),
@@ -267,6 +278,9 @@ function recolectar() {
 
     alpha:      getF('alpha') || 0,
     sobrecarga: inputSI('sobrecarga') || 0,
+    nivel_freatico_H: inputSI('nivel_freatico_H'),
+    carga_lineal:      inputSI('carga_lineal') || 0,
+    carga_lineal_dist: inputSI('carga_lineal_dist') || 0,
 
     incluir_sismo: $('#incluir_sismo') ? $('#incluir_sismo').checked : false,
     Aa: getF('Aa') || 0.15,
@@ -291,12 +305,15 @@ function recolectar() {
 /* ---------- Tipo de muro toggle ---------- */
 function aplicarTipoMuro() {
   const t = $('#tipo_muro').value;
+  // Contrafuertes comparte la geometría del voladizo (pantalla + zapata).
   $('#geom-voladizo').style.display = (t === 'gravedad') ? 'none' : '';
   $('#geom-gravedad').style.display = (t === 'gravedad') ? '' : 'none';
+  const cfParams = $('#contrafuerte-params');
+  if (cfParams) cfParams.style.display = (t === 'contrafuertes') ? '' : 'none';
   const sel = $('#metodo_empuje');
   if (sel) {
     if (t === 'gravedad' && sel.value !== 'coulomb') sel.value = 'coulomb';
-    if (t === 'voladizo' && sel.value !== 'rankine')  sel.value = 'rankine';
+    if (t !== 'gravedad' && sel.value !== 'rankine')  sel.value = 'rankine';
   }
   actualizarVistaPrevia();
 }
@@ -633,6 +650,10 @@ function renderizarResultados(j) {
   }
   // Tabla de combinaciones — la cambiamos para mostrar ELU + ELS condicionalmente
   renderizarCombinaciones(j);
+  // Estabilidad global (falla profunda por dovelas)
+  renderizarEstabilidadGlobal(j);
+  // Diseño de contrafuertes (solo si aplica)
+  renderizarContrafuertes(j);
   // Tabla de diseño estructural (solo voladizo)
   const dis = $('#tbl-diseno tbody');
   if (dis) {
@@ -702,6 +723,137 @@ function renderizarCombinaciones(j) {
   cont.innerHTML = html;
 }
 
+/* ---------- Diseño de contrafuertes ---------- */
+function renderizarContrafuertes(j) {
+  const cont = $('#contrafuertes-wrap');
+  if (!cont) return;
+  const cf = j.contrafuertes;
+  if (j.tipo_muro !== 'contrafuertes' || !cf || !cf.disponible) {
+    cont.innerHTML = '';
+    return;
+  }
+  const badge = cf.cumple ? 'ok' : 'err';
+  const estado = cf.cumple ? 'CUMPLE ✓' : 'REVISAR ✗';
+  const c = cf.contrafuerte || {}, ti = cf.tirantes || {};
+  let html = `
+    <div class="card mb-3">
+      <div class="card-header">
+        <div class="card-title">Diseño de contrafuertes (counterfort)</div>
+        <span class="state ${badge}" style="font-size:12px"><span class="dot"></span>${estado}</span>
+      </div>
+      <div class="hint">La estabilidad externa (volcamiento, deslizamiento, capacidad de carga y estabilidad global)
+        es la misma que la de un voladizo equivalente. Aquí se diseña el comportamiento estructural propio:
+        pantalla y talón flexionando <b>horizontalmente</b> entre contrafuertes (M = w·s²/10), y el contrafuerte
+        como viga T en voladizo. Separación s = ${cf.separacion_m.toFixed(2)} m ·
+        espesor contrafuerte = ${cf.espesor_contrafuerte_m.toFixed(2)} m ·
+        Ka = ${cf.Ka} · presión en base = ${cf.p_base_kPa} kPa.</div>
+      <div class="table-wrap"><table>
+        <thead><tr>
+          <th>Elemento</th><th class="text-right">Mu (kN·m/m ó kN·m)</th>
+          <th class="text-right">As req (mm²/m ó mm²)</th><th class="text-right">Espesor / b_w (m)</th><th>Estado</th>
+        </tr></thead><tbody>`;
+  (cf.tabla_rows || []).forEach(r => {
+    html += `<tr>
+      <td>${r[0]}</td><td class="table-num">${r[1]}</td><td class="table-num">${r[2]}</td>
+      <td class="table-num">${r[3]}</td>
+      <td><span class="state ${r[4].includes('OK') ? 'ok' : 'err'}"><span class="dot"></span>${r[4]}</span></td>
+    </tr>`;
+  });
+  html += `</tbody></table></div>`;
+  // Detalle del contrafuerte y tirantes
+  html += `<div class="hint" style="margin-top:10px">
+    <b>Contrafuerte:</b> empuje P = ${(c.P_total_kN||0).toFixed(0)} kN aplicado a ${(c.y_aplicacion_m||0).toFixed(2)} m de la base,
+    peralte d = ${(c.d_m||0).toFixed(2)} m, cortante Vu = ${(c.Vu_kN||0).toFixed(0)} kN / φVc = ${(c.phiVc_kN||0).toFixed(0)} kN
+    ${c.requiere_estribos ? '→ <b>requiere estribos</b>' : '(sin estribos)'}.
+    <br><b>Tirantes:</b> pantalla ↔ contrafuerte = ${(ti.pantalla_As_mm2_m||0).toFixed(0)} mm²/m ·
+    talón ↔ contrafuerte = ${(ti.talon_As_mm2_m||0).toFixed(0)} mm²/m.</div>`;
+  if ((cf.notas || []).length) {
+    html += `<div class="hint" style="color:var(--status-warn-tx)">⚠ ${cf.notas.join(' · ')}</div>`;
+  }
+  html += `</div>
+    <div class="hint mb-3">La tabla inferior corresponde al diseño por flexión vertical (válido para la puntera y como
+    referencia del arranque de la pantalla); en un muro con contrafuertes la pantalla y el talón se arman según el
+    diseño horizontal mostrado arriba.</div>`;
+  cont.innerHTML = html;
+}
+
+/* ---------- Estabilidad global (dovelas) ---------- */
+function renderizarEstabilidadGlobal(j) {
+  const cont = $('#global-wrap');
+  if (!cont) return;
+  const eg = j.estabilidad_global;
+  if (!eg || !eg.disponible) {
+    cont.innerHTML = `<div class="muted" style="text-align:center;padding:24px">
+      No se pudo evaluar la estabilidad global para esta geometría.</div>`;
+    return;
+  }
+  const cumple = eg.cumple;
+  const cls = cumple ? 'ok' : 'err';
+  const c = eg.circulo || {};
+  const p = eg.parametros || {};
+  const agua = eg.incluye_agua ? 'Sí (con presión de poros)' : 'No';
+  // KPIs
+  let html = `
+    <div class="card mb-3">
+      <div class="card-header">
+        <div class="card-title">Falla de talud profunda — método de las dovelas (${eg.metodo})</div>
+        <span class="state ${cls}" style="font-size:12px"><span class="dot"></span>${eg.estado}</span>
+      </div>
+      <div class="kpi-grid" style="margin-top:6px">
+        <div class="kpi"><div class="kpi-label">FS mínimo (crítico)</div>
+          <div class="kpi-value" style="color:var(--status-${cumple ? 'ok' : 'err'}-tx)">${eg.FS_min.toFixed(2)}</div>
+          <div class="kpi-unit">requerido ≥ ${eg.FS_requerido.toFixed(1)}</div></div>
+        <div class="kpi"><div class="kpi-label">FS Bishop simpl.</div>
+          <div class="kpi-value">${eg.FS_bishop.toFixed(2)}</div>
+          <div class="kpi-unit">iterativo</div></div>
+        <div class="kpi"><div class="kpi-label">FS Fellenius</div>
+          <div class="kpi-value">${eg.FS_fellenius.toFixed(2)}</div>
+          <div class="kpi-unit">ordinario (conserv.)</div></div>
+        <div class="kpi"><div class="kpi-label">Nivel freático</div>
+          <div class="kpi-value" style="font-size:15px">${agua}</div>
+          <div class="kpi-unit">${eg.n_circulos_evaluados} círculos</div></div>
+      </div>
+    </div>`;
+  // Imagen del círculo crítico
+  if (eg.imagen) {
+    html += `<div class="card mb-3">
+      <div class="card-header"><div class="card-title">Círculo de falla crítico</div></div>
+      <div style="text-align:center;padding:8px">
+        <img src="${eg.imagen}" alt="Estabilidad global" style="max-width:100%;height:auto;border-radius:8px">
+      </div>
+      <div class="hint">Centro (${c.xc}, ${c.yc}) m · R = ${c.R} m · profundidad bajo la base = ${c.profundidad_bajo_base} m ·
+        entra en x=${c.x_entrada} m, sale en x=${c.x_salida} m · ${c.n_dovelas} dovelas.</div>
+    </div>`;
+  }
+  // Tabla de dovelas
+  const rows = eg.dovelas_rows || [];
+  if (rows.length) {
+    html += `<div class="card mb-3">
+      <div class="card-header"><div class="card-title">Dovelas (muestra sobre la superficie crítica)</div></div>
+      <div class="table-wrap"><table>
+        <thead><tr>
+          <th class="text-right">x (m)</th><th class="text-right">y base (m)</th><th class="text-right">α (°)</th>
+          <th class="text-right">b (m)</th><th class="text-right">W (kN/m)</th>
+          <th class="text-right">c′ (kPa)</th><th class="text-right">φ′ (°)</th>
+          <th class="text-right">u (kPa)</th><th>Suelo</th>
+        </tr></thead><tbody>`;
+    rows.forEach(r => {
+      const mat = r[8] === 'rel' ? 'Relleno' : 'Cimentación';
+      html += `<tr>
+        <td class="table-num">${r[0]}</td><td class="table-num">${r[1]}</td><td class="table-num">${r[2]}</td>
+        <td class="table-num">${r[3]}</td><td class="table-num">${r[4]}</td><td class="table-num">${r[5]}</td>
+        <td class="table-num">${r[6]}</td><td class="table-num">${r[7]}</td>
+        <td><span class="muted">${mat}</span></td>
+      </tr>`;
+    });
+    html += `</tbody></table></div></div>`;
+  }
+  html += `<div class="hint">La estabilidad global verifica que el conjunto muro + suelo no falle a lo largo de una
+    superficie profunda que envuelve la cimentación (Fellenius y Bishop simplificado, búsqueda del círculo crítico).
+    FS mínimo recomendado: 1.5 estático, 1.1 con sismo (EN 1997 / FHWA).</div>`;
+  cont.innerHTML = html;
+}
+
 /* ---------- Bind y arranque ---------- */
 function bindAll() {
   setupNav();
@@ -736,7 +888,8 @@ function bindAll() {
   };
   ['#H_vastago', '#e_zapata', '#b_puntera', '#b_talon', '#b_corona',
    '#b_base_vast', '#a_frontal_v', '#a_posterior_v', '#D', '#H_relleno',
-   '#alpha', '#sobrecarga',
+   '#alpha', '#sobrecarga', '#nivel_freatico_H', '#relleno_gamma_sat',
+   '#carga_lineal', '#carga_lineal_dist', '#h_diente', '#b_diente',
    '#H_muro', '#e_zapata_g', '#b_corona_g', '#a_frontal', '#a_posterior',
    '#b_puntera_g', '#b_talon_g', '#D_g', '#metodo_empuje'].forEach(sel => {
     const el = $(sel);

@@ -34,6 +34,7 @@ class Suelo:
     cohesion: float = 0.0
     nombre: str = "suelo"
     delta_wall: float | None = None
+    gamma_sat: float | None = None
 
     def __post_init__(self) -> None:
         validar_peso_especifico(self.gamma, "gamma")
@@ -44,6 +45,17 @@ class Suelo:
                 raise ValueError(
                     f"delta_wall ({self.delta_wall}°) debe estar en [0°, phi={self.phi}°]"
                 )
+        if self.gamma_sat is not None:
+            validar_peso_especifico(self.gamma_sat, "gamma_sat")
+
+    @property
+    def gamma_saturado(self) -> float:
+        """Peso unitario saturado (kN/m³); si no se dio, se asume igual a gamma."""
+        return self.gamma_sat if self.gamma_sat is not None else self.gamma
+
+    def gamma_sumergido(self, gamma_w: float = 9.81) -> float:
+        """Peso unitario sumergido (efectivo, boyante): γ' = γ_sat − γ_w."""
+        return max(0.5, self.gamma_saturado - gamma_w)
 
     # ------------------------------------------------------------------
     @property

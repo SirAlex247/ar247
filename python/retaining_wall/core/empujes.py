@@ -253,6 +253,71 @@ class EmpujeSuelo:
         )
 
     @staticmethod
+    def calcular_empuje_activo_con_agua(
+        gamma: float,
+        gamma_sat: float,
+        H: float,
+        phi_grados: float,
+        h_agua: float,
+        alpha_grados: float = 0.0,
+        cohesion: float = 0.0,
+        gamma_w: float = 9.81,
+    ) -> dict:
+        """Empuje activo de Rankine con nivel freático en el relleno.
+
+        Bajo el N.F. la presión de tierra usa el esfuerzo EFECTIVO (peso
+        sumergido γ' = γ_sat − γ_w) y se añade una presión HIDROSTÁTICA del agua
+        (que no se reduce por Ka). El agua eleva el empuje total resultante.
+
+        Args:
+            gamma: peso unitario húmedo del relleno sobre el N.F. (kN/m³).
+            gamma_sat: peso unitario saturado bajo el N.F. (kN/m³).
+            H: altura de tierra retenida (H' si α>0), medida desde la base (m).
+            h_agua: altura del N.F. medida desde la base de la zapata (m).
+            phi_grados, alpha_grados, cohesion: parámetros del relleno.
+
+        Returns:
+            dict con ``efectivo`` (Empuje de tierra efectivo), ``agua``
+            (Empuje hidrostático) y ``detalle`` (perfil de presiones).
+        """
+        validar_positivo(H, "H")
+        Ka = EmpujeSuelo.calcular_ka_rankine(phi_grados, alpha_grados)
+        gp = max(0.5, gamma_sat - gamma_w)              # γ' sumergido
+        hw = min(max(h_agua, 0.0), H)                   # altura sumergida
+        d = H - hw                                      # altura húmeda (sobre N.F.)
+
+        # Fuerzas del diagrama de presión efectiva (Ka·σ'_v) y sus brazos (desde la base)
+        F1 = 0.5 * Ka * gamma * d ** 2;   y1 = hw + d / 3.0     # triángulo húmedo
+        F2 = Ka * gamma * d * hw;         y2 = hw / 2.0         # rectángulo (bajo N.F.)
+        F3 = 0.5 * Ka * gp * hw ** 2;     y3 = hw / 3.0         # triángulo sumergido
+        Pa0 = F1 + F2 + F3
+        # Reducción por cohesión (grieta de tracción), acotada a 0
+        red_c = 2.0 * cohesion * H * math.sqrt(Ka)
+        Pa = max(0.0, Pa0 - red_c)
+        y_tierra = ((F1 * y1 + F2 * y2 + F3 * y3) / Pa0) if Pa0 > 0 else H / 3.0
+        alpha_rad = math.radians(alpha_grados)
+        efectivo = Empuje(magnitud=Pa, componente_h=Pa * math.cos(alpha_rad),
+                          componente_v=Pa * math.sin(alpha_rad),
+                          y_aplicacion=y_tierra, coeficiente=Ka,
+                          metodo="Rankine activo (efectivo, con N.F.)")
+
+        # Presión hidrostática del agua (triángulo sobre la altura sumergida)
+        Pw = 0.5 * gamma_w * hw ** 2
+        agua = Empuje(magnitud=Pw, componente_h=Pw, componente_v=0.0,
+                      y_aplicacion=hw / 3.0, coeficiente=1.0, metodo="Hidrostático")
+
+        return {
+            "efectivo": efectivo,
+            "agua": agua,
+            "detalle": {
+                "Ka": round(Ka, 4), "h_agua_m": round(hw, 3),
+                "gamma_sumergido_kNm3": round(gp, 2),
+                "P_tierra_kN": round(Pa, 2), "P_agua_kN": round(Pw, 2),
+                "P_total_kN": round(Pa * math.cos(alpha_rad) + Pw, 2),
+            },
+        }
+
+    @staticmethod
     def calcular_empuje_pasivo_rankine(
         gamma: float,
         H: float,
@@ -387,6 +452,40 @@ class EmpujeSuelo:
             coeficiente=Ka,
             metodo="Sobrecarga uniforme",
         )
+
+    @staticmethod
+    def calcular_empuje_linea(q_l: float, a: float, H: float,
+                              n_int: int = 240) -> Empuje:
+        """Empuje horizontal por una carga LINEAL q_l (kN/m) paralela al muro, a
+        distancia horizontal ``a`` (m) de la cara posterior, sobre un muro rígido
+        de altura ``H`` (Boussinesq — formulación de Das, cap. 7).
+
+        Con m = a/H y n = z/H:
+          m ≤ 0.4:  σ_h = (q_l/H)·0.203 n /(0.16+n²)²
+          m > 0.4:  σ_h = (4 q_l/πH)·(m² n)/(m²+n²)²
+        La resultante y su altura se obtienen integrando σ_h(z) de 0 a H.
+        """
+        if q_l <= 0 or H <= 0:
+            return Empuje(0.0, 0.0, 0.0, H / 3.0, 0.0, "Carga lineal (Boussinesq)")
+        m = a / H
+        def sigma(z):
+            n = z / H
+            if m <= 0.4:
+                return (q_l / H) * (0.203 * n) / (0.16 + n * n) ** 2
+            return (4.0 * q_l / (math.pi * H)) * (m * m * n) / (m * m + n * n) ** 2
+        P = 0.0
+        Mz = 0.0
+        dz = H / n_int
+        for i in range(n_int):
+            z = (i + 0.5) * dz
+            s = sigma(z)
+            P += s * dz
+            Mz += s * z * dz
+        z_bar = (Mz / P) if P > 0 else H / 2.0        # profundidad del centroide
+        y = max(0.0, H - z_bar)                        # altura desde la base
+        return Empuje(magnitud=P, componente_h=P, componente_v=0.0,
+                      y_aplicacion=y, coeficiente=0.0,
+                      metodo="Carga lineal (Boussinesq)")
 
 
 # =============================================================================

@@ -266,12 +266,18 @@ class CondicionesCarga:
     kh: float = 0.0
     kv: float = 0.0
     nivel_freatico_H: float | None = None
+    # Sobrecarga lineal (kN/m) paralela al muro, a una distancia horizontal
+    # (m) de la cara posterior del vástago. Empuje por Boussinesq (muro rígido).
+    carga_lineal: float = 0.0
+    carga_lineal_dist: float = 0.0
 
     def __post_init__(self) -> None:
         validar_rango(self.alpha, 0.0, 30.0, "alpha")
         validar_positivo(self.sobrecarga, "sobrecarga", permitir_cero=True)
         validar_rango(self.kh, 0.0, 0.5, "kh")
         validar_rango(self.kv, 0.0, 0.5, "kv")
+        validar_positivo(self.carga_lineal, "carga_lineal", permitir_cero=True)
+        validar_positivo(self.carga_lineal_dist, "carga_lineal_dist", permitir_cero=True)
 
 
 # =============================================================================

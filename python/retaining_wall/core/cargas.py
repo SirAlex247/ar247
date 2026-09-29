@@ -252,9 +252,13 @@ class CalculadoraCargas:
         # 2) Empuje activo del relleno
         self._agregar_empuje_activo(sistema)
 
-        # 3) Empuje por sobrecarga
+        # 3) Empuje por sobrecarga uniforme
         if self.muro.condiciones.sobrecarga > 0:
             self._agregar_empuje_sobrecarga(sistema)
+
+        # 3b) Empuje por carga lineal (Boussinesq)
+        if getattr(self.muro.condiciones, "carga_lineal", 0.0) > 0:
+            self._agregar_carga_lineal(sistema)
 
         # 4) Empuje pasivo frente a la puntera (resistente al deslizamiento)
         self._agregar_empuje_pasivo(sistema)
@@ -273,6 +277,30 @@ class CalculadoraCargas:
         cond = self.muro.condiciones
         H_prima = self._geometria.altura_efectiva_rankine()
         B = self.muro.geometria.B
+
+        # --- Con nivel freático: empuje de tierra EFECTIVO + hidrostático ---
+        nf = getattr(cond, "nivel_freatico_H", None)
+        if nf is not None and nf > 0:
+            res = EmpujeSuelo.calcular_empuje_activo_con_agua(
+                gamma=relleno.gamma, gamma_sat=relleno.gamma_saturado,
+                H=H_prima, phi_grados=relleno.phi, h_agua=nf,
+                alpha_grados=cond.alpha, cohesion=relleno.cohesion,
+            )
+            emp, agua = res["efectivo"], res["agua"]
+            sistema.agregar(Carga(
+                nombre="Empuje activo efectivo (horiz.)", magnitud=emp.componente_h,
+                tipo=TipoCarga.HORIZONTAL, categoria=CategoriaCarga.H,
+                y_aplicacion=emp.y_aplicacion, sentido=+1))
+            if emp.componente_v > 0:
+                sistema.agregar(Carga(
+                    nombre="Empuje activo (vert.)", magnitud=emp.componente_v,
+                    tipo=TipoCarga.VERTICAL, categoria=CategoriaCarga.Hv,
+                    x_aplicacion=B, sentido=+1))
+            sistema.agregar(Carga(
+                nombre="Empuje hidrostático (agua)", magnitud=agua.componente_h,
+                tipo=TipoCarga.HORIZONTAL, categoria=CategoriaCarga.H,
+                y_aplicacion=agua.y_aplicacion, sentido=+1))
+            return
 
         if self.metodo_empuje == "rankine":
             emp = EmpujeSuelo.calcular_empuje_activo_rankine(
@@ -326,6 +354,21 @@ class CalculadoraCargas:
             y_aplicacion=emp.y_aplicacion,
             sentido=+1,
         ))
+
+    def _agregar_carga_lineal(self, sistema: SistemaCargas) -> None:
+        cond = self.muro.condiciones
+        H = self._geometria.altura_efectiva_rankine()
+        emp = EmpujeSuelo.calcular_empuje_linea(
+            q_l=cond.carga_lineal, a=cond.carga_lineal_dist, H=H)
+        if emp.componente_h > 0:
+            sistema.agregar(Carga(
+                nombre="Empuje carga lineal (Boussinesq)",
+                magnitud=emp.componente_h,
+                tipo=TipoCarga.HORIZONTAL,
+                categoria=CategoriaCarga.Lsc,
+                y_aplicacion=emp.y_aplicacion,
+                sentido=+1,
+            ))
 
     def _agregar_empuje_pasivo(self, sistema: SistemaCargas) -> None:
         cim = self.muro.suelo_cimentacion

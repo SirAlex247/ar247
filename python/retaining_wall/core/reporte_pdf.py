@@ -628,6 +628,9 @@ def generar_pdf(
     sistema_unidades: str = "MKS",
     tipo_muro: str = "voladizo",
     norma: str = "NSR10",
+    estabilidad_global: dict | None = None,
+    imagen_estab_global_png: bytes | None = None,
+    contrafuertes: dict | None = None,
 ) -> bytes:
     """Genera el reporte PDF y lo devuelve como bytes.
 
@@ -1284,6 +1287,96 @@ def generar_pdf(
     t = Table(filas, colWidths=[9 * cm, 7 * cm])
     t.setStyle(_estilo_tabla_datos())
     story.append(t)
+    story.append(Spacer(1, 0.4 * cm))
+
+    # ============ ESTABILIDAD GLOBAL (falla profunda por dovelas) ============
+    if estabilidad_global and estabilidad_global.get("disponible"):
+        eg = estabilidad_global
+        story.append(Paragraph(
+            f"<b>{num.h2()} Estabilidad global (falla de talud profunda)</b>", H2))
+        story.append(Paragraph(
+            "Verificación de que el conjunto muro + suelo no falle a lo largo "
+            "de una superficie de deslizamiento profunda que envuelve la "
+            "cimentación. Se emplea el método de las dovelas sobre superficies "
+            "circulares (Fellenius ordinario y Bishop simplificado) con "
+            "búsqueda del círculo crítico (el de menor factor de seguridad). "
+            "El FS mínimo recomendado es 1.5 en condición estática y 1.1 con "
+            "sismo (EN 1997 / FHWA).", BODY))
+        estado_eg = eg.get("estado", "—")
+        c = eg.get("circulo", {})
+        filas_eg = [
+            ["Parámetro", "Valor"],
+            ["FS mínimo (crítico)", f"{eg.get('FS_min', 0):.2f}"],
+            ["FS requerido", f"{eg.get('FS_requerido', 1.5):.1f}"],
+            ["Estado", estado_eg],
+            ["FS Bishop simplificado", f"{eg.get('FS_bishop', 0):.2f}"],
+            ["FS Fellenius (ordinario)", f"{eg.get('FS_fellenius', 0):.2f}"],
+            ["Método gobernante", str(eg.get("metodo", "bishop")).capitalize()],
+            ["Incluye nivel freático", "Sí" if eg.get("incluye_agua") else "No"],
+            ["Centro del círculo (x, y)", f"({c.get('xc','—')}, {c.get('yc','—')}) m"],
+            ["Radio", f"{c.get('R','—')} m"],
+            ["Profundidad bajo la base", f"{c.get('profundidad_bajo_base','—')} m"],
+            ["Nº de dovelas", str(c.get("n_dovelas", "—"))],
+        ]
+        t = Table(filas_eg, colWidths=[9 * cm, 7 * cm])
+        estilo_eg = _estilo_tabla_datos()
+        idx_estado = 3
+        if "NO" in estado_eg or "✗" in estado_eg:
+            estilo_eg.add("BACKGROUND", (1, idx_estado), (1, idx_estado), COLOR_ERR_BG)
+            estilo_eg.add("TEXTCOLOR", (1, idx_estado), (1, idx_estado), COLOR_ERR_TXT)
+        else:
+            estilo_eg.add("BACKGROUND", (1, idx_estado), (1, idx_estado), COLOR_OK_BG)
+            estilo_eg.add("TEXTCOLOR", (1, idx_estado), (1, idx_estado), COLOR_OK_TXT)
+        estilo_eg.add("FONTNAME", (1, idx_estado), (1, idx_estado), "Helvetica-Bold")
+        t.setStyle(estilo_eg)
+        story.append(t)
+        story.append(Spacer(1, 0.3 * cm))
+        if imagen_estab_global_png:
+            img_stream_eg = io.BytesIO(imagen_estab_global_png)
+            story.append(Image(img_stream_eg, width=16 * cm, height=10.3 * cm,
+                               kind="proportional"))
+
+    # ============ DISEÑO DE CONTRAFUERTES ============
+    if contrafuertes and contrafuertes.get("disponible"):
+        story.append(Spacer(1, 0.4 * cm))
+        story.append(Paragraph(
+            f"<b>{num.h2()} Diseño de contrafuertes</b>", H2))
+        story.append(Paragraph(
+            "La estabilidad externa es idéntica a la de un muro en voladizo "
+            "equivalente. La pantalla y el talón flexionan horizontalmente como "
+            "losas continuas apoyadas en los contrafuertes (M = w·s²/10), y el "
+            "contrafuerte trabaja como una viga T en voladizo empotrada en la "
+            f"zapata. Separación s = {contrafuertes['separacion_m']:.2f} m, "
+            f"espesor del contrafuerte = {contrafuertes['espesor_contrafuerte_m']:.2f} m, "
+            f"K<sub>a</sub> = {contrafuertes['Ka']}, presión lateral en la base "
+            f"= {contrafuertes['p_base_kPa']:.2f} kPa.", BODY))
+        header = ["Elemento", "Mu", "As requerido", "Espesor/b_w (m)", "Estado"]
+        filas = [header] + contrafuertes.get("tabla_rows", [])
+        t = Table(filas, colWidths=[6 * cm, 3.2 * cm, 3.2 * cm, 2.6 * cm, 2 * cm])
+        estilo = _estilo_tabla_resultado()
+        for i, row in enumerate(contrafuertes.get("tabla_rows", []), start=1):
+            ok = "OK" in row[-1]
+            estilo.add("BACKGROUND", (-1, i), (-1, i),
+                       COLOR_OK_BG if ok else COLOR_ERR_BG)
+            estilo.add("TEXTCOLOR", (-1, i), (-1, i),
+                       COLOR_OK_TXT if ok else COLOR_ERR_TXT)
+            estilo.add("FONTNAME", (-1, i), (-1, i), "Helvetica-Bold")
+        t.setStyle(estilo)
+        story.append(t)
+        cfd = contrafuertes.get("contrafuerte", {})
+        tir = contrafuertes.get("tirantes", {})
+        story.append(Spacer(1, 0.2 * cm))
+        story.append(Paragraph(
+            f"<b>Contrafuerte:</b> P = {cfd.get('P_total_kN', 0):.0f} kN a "
+            f"{cfd.get('y_aplicacion_m', 0):.2f} m de la base, d = "
+            f"{cfd.get('d_m', 0):.2f} m, Vu = {cfd.get('Vu_kN', 0):.0f} kN / "
+            f"φVc = {cfd.get('phiVc_kN', 0):.0f} kN"
+            + (" (requiere estribos). " if cfd.get("requiere_estribos") else ". ")
+            + f"<b>Tirantes:</b> pantalla ↔ contrafuerte = "
+            f"{tir.get('pantalla_As_mm2_m', 0):.0f} mm²/m, talón ↔ contrafuerte = "
+            f"{tir.get('talon_As_mm2_m', 0):.0f} mm²/m.", BODY))
+        for nota in contrafuertes.get("notas", []):
+            story.append(Paragraph(f"⚠ {nota}", BODY))
     story.append(PageBreak())
 
     # ============ DISEÑO ESTRUCTURAL ============

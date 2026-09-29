@@ -74,6 +74,20 @@
         <div class="mc-desc">Bloque para maquinaria dinámica · ACI 351.3R · rigidez y amortiguamiento del suelo, frecuencias naturales, resonancia y amplitud de vibración.</div>
         <div class="mc-badge ok">Disponible</div>
       </button>
+
+      <button class="module-card" data-modulo-sel="mse">
+        <div class="mc-icon"><svg viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M4 21V7h11v14"/><path d="M4 11h11"/><path d="M4 15h11"/><path d="M15 9l5-2v14"/></svg></div>
+        <div class="mc-title">Tierra armada (MSE)</div>
+        <div class="mc-desc">Muro de suelo reforzado (geosintético o metálico) · método simplificado FHWA/AASHTO · estabilidad interna (rotura y arrancamiento capa a capa) y externa.</div>
+        <div class="mc-badge ok">Disponible</div>
+      </button>
+
+      <button class="module-card" data-modulo-sel="anclado">
+        <div class="mc-icon"><svg viewBox="0 0 24 24"><path d="M5 3v18"/><path d="M5 6l14 4"/><path d="M5 12l14 4"/><path d="M5 18h13"/></svg></div>
+        <div class="mc-title">Muro anclado</div>
+        <div class="mc-desc">Pantalla con anclajes al terreno · presiones aparentes (Terzaghi-Peck / FHWA) · cargas de anclaje, longitud de bulbo y libre, y momento de la pantalla.</div>
+        <div class="mc-badge ok">Disponible</div>
+      </button>
     </div>
 
     <div class="dash-foot">CimX v1.0 · NSR-10 / CCP-14 · Colombia</div>
@@ -191,9 +205,31 @@
         <span class="label">Memoria de cálculo</span>
       </button>
 
+      <!-- ───── Módulo: TIERRA ARMADA (MSE) ───── -->
+      <div class="nav-section" data-module="mse">Tierra armada (MSE)</div>
+      <button class="nav-item" data-view="mse" data-module="mse">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M4 21V7h11v14"/><path d="M4 11h11"/><path d="M4 15h11"/><path d="M15 9l5-2v14"/></svg>
+        <span class="label">Diseño MSE</span>
+      </button>
+      <button class="nav-item" data-view="msereport" data-module="mse">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>
+        <span class="label">Memoria de cálculo</span>
+      </button>
+
+      <!-- ───── Módulo: MURO ANCLADO ───── -->
+      <div class="nav-section" data-module="anclado">Muro anclado</div>
+      <button class="nav-item" data-view="anclado" data-module="anclado">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M5 3v18"/><path d="M5 6l14 4"/><path d="M5 12l14 4"/><path d="M5 18h13"/></svg>
+        <span class="label">Diseño anclado</span>
+      </button>
+      <button class="nav-item" data-view="ancladoreport" data-module="anclado">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>
+        <span class="label">Memoria de cálculo</span>
+      </button>
+
       <!-- ───── Compartido ───── -->
-      <div class="nav-section" data-module="muro pilote zapata placa caisson dado maquina">Proyecto</div>
-      <button class="nav-item" data-view="project" data-module="muro pilote zapata placa caisson dado maquina">
+      <div class="nav-section" data-module="muro pilote zapata placa caisson dado maquina mse anclado">Proyecto</div>
+      <button class="nav-item" data-view="project" data-module="muro pilote zapata placa caisson dado maquina mse anclado">
         <svg class="icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
         <span class="label">Datos del Proyecto</span>
       </button>
@@ -418,7 +454,18 @@
               <select id="tipo_muro" class="input">
                 <option value="voladizo" selected>Voladizo (cantilever)</option>
                 <option value="gravedad">Gravedad (trapezoidal)</option>
+                <option value="contrafuertes">Con contrafuertes (counterfort)</option>
               </select>
+            </div>
+            <div class="field-row" id="contrafuerte-params" style="display:none">
+              <div class="field">
+                <label class="field-label">Separación contrafuertes <span class="unit">m</span></label>
+                <input type="number" id="contrafuerte_sep" data-mag="length" class="input" value="3.00" step="0.1">
+              </div>
+              <div class="field">
+                <label class="field-label">Espesor contrafuerte <span class="unit">m</span></label>
+                <input type="number" id="contrafuerte_espesor" data-mag="length" class="input" value="0.35" step="0.05">
+              </div>
             </div>
             <div class="field">
               <label class="field-label">Método de empuje activo</label>
@@ -500,6 +547,17 @@
               <label class="field-label">Profundidad de desplante D <span class="unit">m</span></label>
               <input type="number" id="D" data-mag="length" class="input" value="1.50" step="0.05">
             </div>
+            <div class="field-row">
+              <div class="field">
+                <label class="field-label">Diente de cortante · profundidad <span class="unit">m (opc.)</span></label>
+                <input type="number" id="h_diente" data-mag="length" class="input" placeholder="sin diente" step="0.05">
+              </div>
+              <div class="field">
+                <label class="field-label">Diente · ancho <span class="unit">m</span></label>
+                <input type="number" id="b_diente" data-mag="length" class="input" placeholder="0.40" step="0.05">
+              </div>
+            </div>
+            <div class="hint mt-3">El diente (llave de cortante) bajo la zapata aumenta el empuje pasivo y la resistencia al deslizamiento.</div>
           </div>
 
           <div class="card" id="geom-gravedad" style="display:none">
@@ -602,6 +660,10 @@
               <input type="number" id="relleno_cohesion" data-mag="pressure" class="input" value="0" step="0.1">
             </div>
           </div>
+          <div class="field" style="max-width:280px">
+            <label class="field-label">γ saturado <span class="unit">tonf/m³ (opc.)</span></label>
+            <input type="number" id="relleno_gamma_sat" data-mag="gamma" class="input" placeholder="= γ (si hay N.F.)" step="0.01">
+          </div>
         </div>
 
         <div class="card">
@@ -652,6 +714,22 @@
             <label class="field-label">Sobrecarga q <span class="unit">tonf/m²</span></label>
             <input type="number" id="sobrecarga" data-mag="pressure" class="input" value="0" step="0.1">
           </div>
+          <div class="field-row">
+            <div class="field">
+              <label class="field-label">Carga lineal <span class="unit">tonf/m (opc.)</span></label>
+              <input type="number" id="carga_lineal" data-mag="force" class="input" value="0" step="0.5">
+            </div>
+            <div class="field">
+              <label class="field-label">Distancia al muro <span class="unit">m</span></label>
+              <input type="number" id="carga_lineal_dist" data-mag="length" class="input" value="1.0" step="0.1">
+            </div>
+          </div>
+          <div class="hint mt-3">Carga lineal paralela al muro (p.ej. una zapata o vía cercana): su empuje se calcula por Boussinesq (muro rígido). La distancia se mide desde la cara posterior del vástago.</div>
+          <div class="field">
+            <label class="field-label">Nivel freático (desde la base) <span class="unit">m (opc.)</span></label>
+            <input type="number" id="nivel_freatico_H" data-mag="length" class="input" placeholder="sin agua" step="0.1">
+          </div>
+          <div class="hint mt-3">Con N.F. el empuje usa esfuerzos efectivos (peso sumergido γ') y suma la presión hidrostática del agua — puede duplicar el empuje. Provee drenaje/lloraderos y define el γ saturado del relleno.</div>
         </div>
 
         <div class="card">
@@ -738,6 +816,7 @@
         <button class="tab active" data-tab="cargas">Cargas</button>
         <button class="tab" data-tab="combinaciones">Combinaciones</button>
         <button class="tab" data-tab="diseno">Diseño estructural</button>
+        <button class="tab" data-tab="global">Estabilidad global</button>
       </div>
 
       <div class="tab-panel active" data-panel="cargas">
@@ -758,6 +837,7 @@
       </div>
 
       <div class="tab-panel" data-panel="diseno">
+        <div id="contrafuertes-wrap"></div>
         <div class="table-wrap">
           <table id="tbl-diseno">
             <thead>
@@ -766,6 +846,14 @@
             </thead>
             <tbody><tr><td colspan="6" class="muted" style="text-align:center;padding:24px">Ejecuta el análisis para ver el diseño</td></tr></tbody>
           </table>
+        </div>
+      </div>
+
+      <div class="tab-panel" data-panel="global">
+        <div id="global-wrap">
+          <div class="muted" style="text-align:center;padding:24px">
+            Ejecuta el análisis para ver la estabilidad global (falla profunda por dovelas)
+          </div>
         </div>
       </div>
     </section>
@@ -1613,6 +1701,274 @@
       </div>
     </section>
 
+    <!-- ===== VISTA: TIERRA ARMADA (MSE) ===== -->
+    <section class="view" data-view="mse" data-module="mse">
+      <div class="view-header">
+        <div>
+          <div class="view-title">Muro de tierra armada (MSE)</div>
+          <div class="view-subtitle">Suelo reforzado — método simplificado FHWA (NHI-10-024) / AASHTO · estabilidad interna y externa</div>
+        </div>
+        <button class="btn btn-primary" id="btn-mse-calc" type="button">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          <span>Calcular</span>
+        </button>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start">
+        <!-- IZQUIERDA: entradas -->
+        <div style="display:flex;flex-direction:column;gap:20px">
+          <div class="card">
+            <div class="card-header"><div class="card-title">Geometría</div></div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">Altura H <span class="unit">m</span></label>
+                <input type="number" id="mse_H" data-mag="length" class="input" value="8.0" step="0.1"></div>
+              <div class="field"><label class="field-label">Longitud refuerzo L <span class="unit">m</span></label>
+                <input type="number" id="mse_L" data-mag="length" class="input" value="5.6" step="0.1"></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">Espaciamiento vertical Sv <span class="unit">m</span></label>
+                <input type="number" id="mse_Sv" data-mag="length" class="input" value="0.6" step="0.05"></div>
+              <div class="field"><label class="field-label">Sobrecarga q <span class="unit">tonf/m²</span></label>
+                <input type="number" id="mse_q" data-mag="pressure" class="input" value="1.0" step="0.5"></div>
+            </div>
+            <div class="hint mt-3">Recomendación FHWA: L ≥ 0.7·H y ≥ 2.4 m. El nº de capas se deriva de H/Sv.</div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><div class="card-title">Refuerzo</div></div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">Tipo</label>
+                <select id="mse_tipo" class="input">
+                  <option value="geosintetico" selected>Geosintético (extensible)</option>
+                  <option value="metalico">Metálico (inextensible)</option>
+                </select></div>
+              <div class="field"><label class="field-label">Resistencia admisible Ta <span class="unit">kN/m</span></label>
+                <input type="number" id="mse_Ta" class="input" value="45" step="1"></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">F* arrancamiento <span class="unit">(opc.)</span></label>
+                <input type="number" id="mse_F" class="input" placeholder="auto (tanφ / ⅔tanφ)" step="0.05"></div>
+              <div class="field"><label class="field-label">α · cobertura Rc</label>
+                <input type="number" id="mse_Rc" class="input" value="1.0" step="0.05"></div>
+            </div>
+            <div class="hint mt-3">Geosintético: Kr = Ka, F* ≈ ⅔·tanφ. Metálico: Kr/Ka = 1.7→1.2 (0–6 m), F* ≈ tanφ. Deja F* vacío para el valor por defecto.</div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><div class="card-title">Suelos</div></div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">Relleno reforzado γ<sub>r</sub> <span class="unit">tonf/m³</span></label>
+                <input type="number" id="mse_gr" data-mag="gamma" class="input" value="1.94" step="0.05"></div>
+              <div class="field"><label class="field-label">φ<sub>r</sub> <span class="unit">°</span></label>
+                <input type="number" id="mse_pr" class="input" value="34" step="1"></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">Relleno retenido γ<sub>b</sub> <span class="unit">tonf/m³</span></label>
+                <input type="number" id="mse_gb" data-mag="gamma" class="input" value="1.84" step="0.05"></div>
+              <div class="field"><label class="field-label">φ<sub>b</sub> <span class="unit">°</span></label>
+                <input type="number" id="mse_pb" class="input" value="30" step="1"></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">Cimentación γ<sub>f</sub> <span class="unit">tonf/m³</span></label>
+                <input type="number" id="mse_gf" data-mag="gamma" class="input" value="1.94" step="0.05"></div>
+              <div class="field"><label class="field-label">φ<sub>f</sub> <span class="unit">°</span></label>
+                <input type="number" id="mse_pf" class="input" value="30" step="1"></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">Cohesión cimentación c<sub>f</sub> <span class="unit">tonf/m²</span></label>
+                <input type="number" id="mse_cf" data-mag="pressure" class="input" value="0" step="0.5"></div>
+              <div class="field"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- DERECHA: resultados + esquema -->
+        <div style="display:flex;flex-direction:column;gap:20px">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">Resultados</div>
+              <span class="state" id="mse-estado" style="display:none"></span>
+            </div>
+            <div class="kpi-grid" id="mse-kpis" style="grid-template-columns:1fr 1fr 1fr">
+              <div class="kpi"><div class="kpi-label">FS rotura mín</div><div class="kpi-value" id="msek-rot">—</div><div class="kpi-unit">≥ 1.0</div></div>
+              <div class="kpi"><div class="kpi-label">FS arrancamiento mín</div><div class="kpi-value" id="msek-po">—</div><div class="kpi-unit">≥ 1.5</div></div>
+              <div class="kpi"><div class="kpi-label">Nº de capas</div><div class="kpi-value" id="msek-n">—</div><div class="kpi-unit">@ Sv</div></div>
+              <div class="kpi"><div class="kpi-label">FS deslizamiento</div><div class="kpi-value" id="msek-desl">—</div><div class="kpi-unit">≥ 1.5</div></div>
+              <div class="kpi"><div class="kpi-label">FS volcamiento</div><div class="kpi-value" id="msek-volc">—</div><div class="kpi-unit">≥ 2.0</div></div>
+              <div class="kpi"><div class="kpi-label">FS capacidad</div><div class="kpi-value" id="msek-cap">—</div><div class="kpi-unit">≥ 2.5</div></div>
+            </div>
+            <div id="mse-detalle" style="margin-top:16px"></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div class="card-title">Esquema del muro</div></div>
+            <div class="preview-frame" id="mse-preview" style="min-height:340px;text-align:center">
+              <div style="padding:36px;color:var(--text-muted)">Presiona "Calcular" para ver el esquema, las capas y las verificaciones.</div>
+            </div>
+          </div>
+          <div class="card" id="mse-capas-card" style="display:none">
+            <div class="card-header"><div class="card-title">Estabilidad interna por capa</div></div>
+            <div class="table-wrap" id="mse-capas-wrap"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== VISTA: MSE MEMORIA ===== -->
+    <section class="view" data-view="msereport" data-module="mse">
+      <div class="view-header">
+        <div>
+          <div class="view-title">Memoria de cálculo</div>
+          <div class="view-subtitle">Reporte PDF del muro de tierra armada</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">Generar memoria</div></div>
+        <p style="color:var(--text-secondary);line-height:1.6;margin:0 0 16px">
+          Genera un PDF con la geometría, los materiales, el esquema del muro con las capas de refuerzo y la
+          superficie de falla interna, la tabla de <b>estabilidad interna</b> capa a capa (T<sub>max</sub>,
+          rotura y arrancamiento) y la de <b>estabilidad externa</b> (deslizamiento, volcamiento, excentricidad
+          y capacidad portante), por el método simplificado <b>FHWA/AASHTO</b>. Usa los datos de <b>Diseño MSE</b>
+          y de <b>Datos del Proyecto</b>.
+        </p>
+        <button class="btn btn-primary" id="btn-mse-pdf" type="button">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span>Generar memoria (PDF)</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- ===== VISTA: MURO ANCLADO (diseño) ===== -->
+    <section class="view" data-view="anclado" data-module="anclado">
+      <div class="view-header">
+        <div>
+          <div class="view-title">Muro anclado</div>
+          <div class="view-subtitle">Pantalla con anclajes al terreno — presiones aparentes (Terzaghi-Peck / FHWA GEC-4)</div>
+        </div>
+        <button class="btn btn-primary" id="btn-anc-calc" type="button">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          <span>Calcular</span>
+        </button>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start">
+        <div style="display:flex;flex-direction:column;gap:20px">
+          <div class="card">
+            <div class="card-header"><div class="card-title">Excavación y suelo</div></div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">Altura H <span class="unit">m</span></label>
+                <input type="number" id="anc_H" data-mag="length" class="input" value="12.0" step="0.5"></div>
+              <div class="field"><label class="field-label">Tipo de suelo</label>
+                <select id="anc_tipo" class="input">
+                  <option value="arena" selected>Arena (granular)</option>
+                  <option value="arcilla">Arcilla</option>
+                </select></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">γ suelo <span class="unit">tonf/m³</span></label>
+                <input type="number" id="anc_gamma" data-mag="gamma" class="input" value="1.94" step="0.05"></div>
+              <div class="field"><label class="field-label">φ <span class="unit">°</span></label>
+                <input type="number" id="anc_phi" class="input" value="32" step="1"></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">Su (arcilla) <span class="unit">tonf/m² (opc.)</span></label>
+                <input type="number" id="anc_Su" data-mag="pressure" class="input" placeholder="solo arcilla" step="1"></div>
+              <div class="field"><label class="field-label">Sobrecarga q <span class="unit">tonf/m²</span></label>
+                <input type="number" id="anc_q" data-mag="pressure" class="input" value="1.2" step="0.5"></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><div class="card-title">Anclajes</div></div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">Nº de filas</label>
+                <input type="number" id="anc_n" class="input" value="3" step="1" min="1" max="8"></div>
+              <div class="field"><label class="field-label">Prof. 1ª fila <span class="unit">m</span></label>
+                <input type="number" id="anc_z1" data-mag="length" class="input" value="2.0" step="0.5"></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">Separación vertical Sv <span class="unit">m</span></label>
+                <input type="number" id="anc_sv" data-mag="length" class="input" value="3.5" step="0.5"></div>
+              <div class="field"><label class="field-label">Separación horizontal sh <span class="unit">m</span></label>
+                <input type="number" id="anc_sh" data-mag="length" class="input" value="2.5" step="0.5"></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">Inclinación <span class="unit">°</span></label>
+                <input type="number" id="anc_incl" class="input" value="15" step="5"></div>
+              <div class="field"></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><div class="card-title">Bulbo inyectado</div></div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">Adherencia τ bulbo <span class="unit">kPa</span></label>
+                <input type="number" id="anc_tau" class="input" value="250" step="10"></div>
+              <div class="field"><label class="field-label">Ø bulbo <span class="unit">m</span></label>
+                <input type="number" id="anc_d" data-mag="length" class="input" value="0.15" step="0.01"></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">FS arrancamiento</label>
+                <input type="number" id="anc_fs" class="input" value="2.0" step="0.1"></div>
+              <div class="field"><label class="field-label">Long. libre mínima <span class="unit">m</span></label>
+                <input type="number" id="anc_lfmin" data-mag="length" class="input" value="4.5" step="0.5"></div>
+            </div>
+            <div class="hint mt-3">τ es la adherencia última bulbo-terreno. Lb = FS·T/(π·Ø·τ). La longitud libre supera la cuña de falla activa.</div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:20px">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">Resultados</div>
+              <span class="state" id="anc-estado" style="display:none"></span>
+            </div>
+            <div class="kpi-grid" id="anc-kpis" style="grid-template-columns:1fr 1fr 1fr">
+              <div class="kpi"><div class="kpi-label">Presión aparente p</div><div class="kpi-value" id="anck-p">—</div><div class="kpi-unit">kPa</div></div>
+              <div class="kpi"><div class="kpi-label">T diseño máx</div><div class="kpi-value" id="anck-t">—</div><div class="kpi-unit">kN</div></div>
+              <div class="kpi"><div class="kpi-label">Empuje total</div><div class="kpi-value" id="anck-e">—</div><div class="kpi-unit">tonf/m</div></div>
+              <div class="kpi"><div class="kpi-label">Lb máx</div><div class="kpi-value" id="anck-lb">—</div><div class="kpi-unit">m</div></div>
+              <div class="kpi"><div class="kpi-label">L total máx</div><div class="kpi-value" id="anck-lt">—</div><div class="kpi-unit">m</div></div>
+              <div class="kpi"><div class="kpi-label">Momento pantalla</div><div class="kpi-value" id="anck-m">—</div><div class="kpi-unit">kN·m/m</div></div>
+            </div>
+            <div id="anc-detalle" style="margin-top:16px"></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div class="card-title">Esquema de la pantalla anclada</div></div>
+            <div class="preview-frame" id="anc-preview" style="min-height:340px;text-align:center">
+              <div style="padding:36px;color:var(--text-muted)">Presiona "Calcular" para ver el esquema, la envolvente y los anclajes.</div>
+            </div>
+          </div>
+          <div class="card" id="anc-tabla-card" style="display:none">
+            <div class="card-header"><div class="card-title">Cargas y longitudes por anclaje</div></div>
+            <div class="table-wrap" id="anc-tabla-wrap"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== VISTA: MURO ANCLADO MEMORIA ===== -->
+    <section class="view" data-view="ancladoreport" data-module="anclado">
+      <div class="view-header">
+        <div>
+          <div class="view-title">Memoria de cálculo</div>
+          <div class="view-subtitle">Reporte PDF del muro anclado</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">Generar memoria</div></div>
+        <p style="color:var(--text-secondary);line-height:1.6;margin:0 0 16px">
+          Genera un PDF con los datos de la excavación y el suelo, el esquema de la pantalla con los anclajes
+          (longitud libre + bulbo), la envolvente de <b>presión aparente</b> y la cuña de falla, la tabla de
+          <b>cargas y longitudes por anclaje</b>, y el resumen de diseño por el método de las presiones aparentes
+          (<b>Terzaghi-Peck / FHWA GEC-4</b>). Usa los datos de <b>Diseño anclado</b> y de <b>Datos del Proyecto</b>.
+        </p>
+        <button class="btn btn-primary" id="btn-anc-pdf" type="button">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span>Generar memoria (PDF)</span>
+        </button>
+      </div>
+    </section>
+
     <!-- ===== VISTA: DADO (diseño) ===== -->
     <section class="view" data-view="dado" data-module="dado">
       <div class="view-header">
@@ -1798,6 +2154,8 @@
 <script src="{{ url_for('static', filename='js/caissons.js') }}"></script>
 <script src="{{ url_for('static', filename='js/maquinas.js') }}"></script>
 <script src="{{ url_for('static', filename='js/dado.js') }}"></script>
+<script src="{{ url_for('static', filename='js/mse.js') }}"></script>
+<script src="{{ url_for('static', filename='js/anclado.js') }}"></script>
 <script src="{{ url_for('static', filename='js/proyecto.js') }}"></script>
 </body>
 </html>

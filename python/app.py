@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import base64
 import logging
+import math
 import os
 import traceback
 from logging.handlers import RotatingFileHandler
@@ -35,8 +36,11 @@ from retaining_wall import (
 from retaining_wall.core.dibujo import (
     dibujar_muro, figura_a_png,
     dibujar_diagrama_empujes, dibujar_diagrama_sismo,
-    dibujar_esfuerzos_zapata,
+    dibujar_esfuerzos_zapata, dibujar_estabilidad_global,
 )
+from retaining_wall.core.estabilidad_global import EstabilidadGlobalMuro
+from retaining_wall.core.contrafuertes import DisenadorContrafuertes
+from retaining_wall.models.muro import TipoMuro
 from retaining_wall.core.reporte_pdf import DatosProyecto, generar_pdf
 from retaining_wall.core.sismo_nsr10 import (
     ParametrosSismicosNSR10, TipoSueloNSR10,
@@ -212,11 +216,13 @@ def construir_muro_desde_datos(d: dict) -> tuple[MuroContencion, ParametrosSismi
     # ──────────────────────────────────────────────────────────────────
     tipo_muro = str(d.get("tipo_muro", "voladizo") or "voladizo").lower()
 
+    _rgs = d.get("relleno_gamma_sat")
     relleno = Suelo(
         gamma=float(d["relleno_gamma"]),
         phi=float(d["relleno_phi"]),
         cohesion=float(d.get("relleno_cohesion", 0.0)),
         nombre=d.get("relleno_nombre", "Relleno"),
+        gamma_sat=(float(_rgs) if _rgs not in (None, "") else None),
     )
     cimentacion = Suelo(
         gamma=float(d["ciment_gamma"]),
@@ -238,11 +244,15 @@ def construir_muro_desde_datos(d: dict) -> tuple[MuroContencion, ParametrosSismi
         kh = params_sismo.kh
         kv = params_sismo.kv
 
+    _nf = d.get("nivel_freatico_H")
     condiciones = CondicionesCarga(
         alpha=float(d.get("alpha", 0.0)),
         sobrecarga=float(d.get("sobrecarga", 0.0)),
         kh=kh,
         kv=kv,
+        nivel_freatico_H=(float(_nf) if _nf not in (None, "") else None),
+        carga_lineal=float(d.get("carga_lineal", 0.0) or 0.0),
+        carga_lineal_dist=float(d.get("carga_lineal_dist", 0.0) or 0.0),
     )
 
     concreto = Concreto(
@@ -304,6 +314,8 @@ def construir_muro_desde_datos(d: dict) -> tuple[MuroContencion, ParametrosSismi
         concreto=concreto,
         acero=acero,
         condiciones=condiciones,
+        tipo=(TipoMuro.CONTRAFUERTES if tipo_muro == "contrafuertes"
+              else TipoMuro.VOLADIZO),
     )
     return muro, params_sismo
 
@@ -599,6 +611,104 @@ def _resultado_gravedad(muro, sistema, reporte, fmt: FormatoUnidades,
     }
 
 
+def _seccion_contrafuertes(muro, datos: dict, metodo_empuje: str) -> dict:
+    """Diseño estructural específico del muro con contrafuertes (pantalla y
+    talón por flexión horizontal, contrafuerte como viga T, tirantes)."""
+    def _f(k, dv):
+        v = datos.get(k, dv)
+        try:
+            return float(v) if v not in (None, "") else dv
+        except (TypeError, ValueError):
+            return dv
+    s = _f("contrafuerte_sep", 3.0)
+    t = _f("contrafuerte_espesor", 0.35)
+    dis = DisenadorContrafuertes(
+        muro, separacion=s, espesor_contrafuerte=t,
+        metodo_empuje=metodo_empuje).disenar()
+    p, tl, cf, ti = dis.pantalla, dis.talon, dis.contrafuerte, dis.tirantes
+    # Tabla resumen (mm²/m y kN·m/m, ya en unidades de armadura)
+    filas = [
+        ["Pantalla (flexión horiz.)", f"{p['Mu_kNm_m']:.1f}",
+         f"{p['As_req_mm2_m']:.0f}", f"{p['espesor_m']:.2f}",
+         "OK" if p["cumple"] else "REVISAR"],
+        ["Talón (flexión horiz.)", f"{tl['Mu_kNm_m']:.1f}",
+         f"{tl['As_req_mm2_m']:.0f}", f"{tl['espesor_m']:.2f}",
+         "OK" if tl["cumple"] else "REVISAR"],
+        ["Contrafuerte (viga T)", f"{cf['Mu_kNm']:.0f}",
+         f"{cf['As_req_mm2']:.0f}", f"{cf['bw_m']:.2f}",
+         "OK" if cf["cumple"] else "REVISAR"],
+    ]
+    return {
+        "disponible": True,
+        "separacion_m": dis.separacion,
+        "espesor_contrafuerte_m": dis.espesor_contrafuerte,
+        "Ka": round(dis.Ka, 3),
+        "p_base_kPa": round(dis.p_base, 2),
+        "pantalla": p, "talon": tl, "contrafuerte": cf, "tirantes": ti,
+        "tabla_rows": filas,
+        "notas": dis.notas,
+        "cumple": dis.cumple,
+    }
+
+
+def _seccion_estabilidad_global(muro, incluir_sismo: bool,
+                                metodo: str = "bishop") -> dict:
+    """Corre la estabilidad global (dovelas) y arma la sección de resultados
+    lista para el frontend y el reporte. El FS es adimensional; las
+    coordenadas del círculo van en metros (no requieren conversión de unidades).
+    """
+    # FS mínimo requerido: 1.5 estático; 1.1 con sismo (práctica/EN 1997-FHWA).
+    FS_req = 1.1 if incluir_sismo else 1.5
+    analisis = EstabilidadGlobalMuro(muro, FS_requerido=FS_req)
+    res = analisis.buscar_critico(metodo=metodo)
+
+    # Imagen del círculo crítico
+    try:
+        fig = dibujar_estabilidad_global(muro, res)
+        img_b64 = base64.b64encode(figura_a_png(fig)).decode("ascii")
+    except Exception:
+        img_b64 = ""
+
+    # Tabla compacta de dovelas (submuestreo a ~12 filas)
+    dov = res.dovelas
+    paso = max(1, len(dov) // 12)
+    dov_rows = []
+    for d in dov[::paso]:
+        dov_rows.append([
+            f"{d['x']:.2f}", f"{d['y_b']:.2f}",
+            f"{math.degrees(d['alpha']):.1f}",
+            f"{d['b']:.2f}", f"{d['W']:.1f}",
+            f"{d['c']:.1f}", f"{math.degrees(math.atan(d['tanphi'])):.1f}",
+            f"{d['u']:.1f}", d["material"],
+        ])
+
+    return {
+        "disponible": res.circulo.n_dovelas > 0,
+        "metodo": res.metodo,
+        "FS_min": round(res.FS_min, 3),
+        "FS_requerido": res.FS_requerido,
+        "cumple": bool(res.cumple),
+        "FS_fellenius": round(res.FS_fellenius, 3),
+        "FS_bishop": round(res.FS_bishop, 3),
+        "incluye_agua": res.incluye_agua,
+        "n_circulos_evaluados": res.n_circulos_evaluados,
+        "circulo": {
+            "xc": round(res.circulo.xc, 3),
+            "yc": round(res.circulo.yc, 3),
+            "R": round(res.circulo.R, 3),
+            "x_entrada": round(res.circulo.x_entrada, 3),
+            "x_salida": round(res.circulo.x_salida, 3),
+            "n_dovelas": res.circulo.n_dovelas,
+            "profundidad_bajo_base": round(res.circulo.R - res.circulo.yc, 3),
+        },
+        "dovelas_rows": dov_rows,
+        "parametros": res.parametros,
+        "imagen": f"data:image/png;base64,{img_b64}" if img_b64 else "",
+        "imagen_raw": img_b64,
+        "estado": "CUMPLE ✓" if res.cumple else "NO CUMPLE ✗",
+    }
+
+
 def ejecutar_analisis(datos: dict) -> dict:
     """Corre el análisis completo y devuelve todos los resultados.
 
@@ -643,6 +753,13 @@ def ejecutar_analisis(datos: dict) -> dict:
     else:
         analisis = AnalisisEstabilidad(muro, sistema)
     reporte = analisis.analisis_completo()
+
+    # Estabilidad global (falla profunda por dovelas) — aplica a cualquier
+    # tipología de muro. El nivel freático y la sobrecarga se toman del muro.
+    try:
+        estabilidad_global = _seccion_estabilidad_global(muro, incluir_sismo_flag)
+    except Exception:
+        estabilidad_global = {"disponible": False}
 
     # Desgloses detallados (deslizamiento, capacidad de carga, excentricidad)
     desliz_detalle = analisis.tabla_deslizamiento()
@@ -715,11 +832,13 @@ def ejecutar_analisis(datos: dict) -> dict:
     # por ahora — eso quedará para un siguiente paso.
     # ──────────────────────────────────────────────────────────────────
     if isinstance(muro, MuroGravedad):
-        return _resultado_gravedad(
+        res_grav = _resultado_gravedad(
             muro, sistema, reporte, fmt,
             desliz_detalle, capcar_detalle, exc_detalle,
             res_elu, res_els, datos,
         )
+        res_grav["estabilidad_global"] = estabilidad_global
+        return res_grav
 
     # Diseño estructural
     if es_ccp14:
@@ -1053,9 +1172,20 @@ def ejecutar_analisis(datos: dict) -> dict:
                      if reporte.cumple_todas and reporte_dis.cumple_todo
                      else "MURO NO APROBADO ✗")
 
+    es_contrafuertes = getattr(muro, "tipo", None) == TipoMuro.CONTRAFUERTES
+    seccion_contraf = None
+    if es_contrafuertes:
+        try:
+            seccion_contraf = _seccion_contrafuertes(
+                muro, datos, datos.get("metodo_empuje", "rankine"))
+        except Exception:
+            seccion_contraf = {"disponible": False}
+
     return {
         "ok": True,
         "norma": norma,
+        "tipo_muro": "contrafuertes" if es_contrafuertes else "voladizo",
+        "contrafuertes": seccion_contraf,
         "muro_resumen": muro_resumen,
         "muro_resumen_raw": muro_resumen_raw,
         "sismo_resumen": sismo_resumen,
@@ -1111,6 +1241,7 @@ def ejecutar_analisis(datos: dict) -> dict:
             "estabilidad": "CUMPLE ✓" if reporte.cumple_todas else "NO CUMPLE ✗",
             "diseno": "CUMPLE ✓" if reporte_dis.cumple_todo else "NO CUMPLE ✗",
         },
+        "estabilidad_global": estabilidad_global,
     }
 
 
@@ -1533,6 +1664,222 @@ def api_maquina_pdf():
         return _error_response(e)
 
 
+# =============================================================================
+# MURO DE TIERRA ARMADA (MSE)
+# =============================================================================
+def _mse_a_dict(res, incluir_imagen: bool = True) -> dict:
+    """Serializa un ResultadoMSE a dict JSON, con el diagrama en base64."""
+    img_b64 = ""
+    if incluir_imagen:
+        try:
+            from retaining_wall.core.mse_reporte import dibujar_mse
+            from retaining_wall.core.dibujo import figura_a_png
+            img_b64 = base64.b64encode(figura_a_png(dibujar_mse(res))).decode("ascii")
+        except Exception:
+            img_b64 = ""
+    capas = [{
+        "i": c.i, "z": round(c.z, 3), "sigma_v": round(c.sigma_v, 2),
+        "Kr": round(c.Kr, 4), "sigma_h": round(c.sigma_h, 2), "Sv": round(c.Sv, 3),
+        "Tmax": round(c.Tmax, 3), "La": round(c.La, 3), "Le": round(c.Le, 3),
+        "Ta": round(c.Ta, 2), "Pr": round(c.Pr, 2),
+        "FS_rotura": round(c.FS_rotura, 3), "FS_pullout": round(c.FS_pullout, 3),
+        "cumple_rotura": c.cumple_rotura, "cumple_pullout": c.cumple_pullout,
+    } for c in res.capas]
+    return {
+        "H": res.H, "L": res.L, "Sv": round(res.Sv, 3), "n_capas": res.n_capas,
+        "tipo_refuerzo": res.tipo_refuerzo,
+        "capas": capas, "externa": res.externa, "resumen": res.resumen,
+        "parametros": res.parametros, "avisos": res.avisos,
+        "cumple": res.cumple,
+        "imagen": f"data:image/png;base64,{img_b64}" if img_b64 else "",
+        "imagen_raw": img_b64,
+    }
+
+
+def construir_mse_desde_datos(d: dict, incluir_imagen: bool = True) -> dict:
+    """Diseña un muro de tierra armada (MSE) desde el payload (SI)."""
+    from retaining_wall.core.mse import DisenadorMSE
+
+    def _f(k, dv):
+        v = d.get(k, dv)
+        try:
+            return float(v) if v not in (None, "") else dv
+        except (TypeError, ValueError):
+            return dv
+
+    def _opt(k):
+        v = d.get(k)
+        try:
+            return float(v) if v not in (None, "") else None
+        except (TypeError, ValueError):
+            return None
+
+    dis = DisenadorMSE(
+        H=_f("H", 6.0), L=_f("L", 4.2), Sv=_f("Sv", 0.6),
+        gamma_r=_f("gamma_r", 19.0), phi_r=_f("phi_r", 34.0),
+        gamma_b=_f("gamma_b", 18.0), phi_b=_f("phi_b", 30.0),
+        gamma_f=_f("gamma_f", 19.0), phi_f=_f("phi_f", 30.0), c_f=_f("c_f", 0.0),
+        sobrecarga=_f("sobrecarga", 0.0),
+        tipo_refuerzo=str(d.get("tipo_refuerzo", "geosintetico") or "geosintetico"),
+        Ta=_f("Ta", 30.0),
+        F_pullout=_opt("F_pullout"), alpha_scale=_opt("alpha_scale"),
+        Rc=_f("Rc", 1.0))
+    return _mse_a_dict(dis.disenar(), incluir_imagen=incluir_imagen)
+
+
+@app.route("/api/mse", methods=["POST"])
+def api_mse():
+    """Diseña un muro de tierra armada (MSE)."""
+    try:
+        d = request.get_json(force=True)
+        return jsonify({"ok": True, **construir_mse_desde_datos(d)})
+    except Exception as e:
+        return _error_response(e)
+
+
+@app.route("/api/mse_pdf", methods=["POST"])
+def api_mse_pdf():
+    """Genera la memoria de cálculo (PDF) del muro de tierra armada."""
+    try:
+        d = request.get_json(force=True)
+        from retaining_wall.core.mse import DisenadorMSE
+        from retaining_wall.core.mse_reporte import generar_memoria_mse
+
+        def _f(k, dv):
+            v = d.get(k, dv)
+            try:
+                return float(v) if v not in (None, "") else dv
+            except (TypeError, ValueError):
+                return dv
+
+        def _opt(k):
+            v = d.get(k)
+            try:
+                return float(v) if v not in (None, "") else None
+            except (TypeError, ValueError):
+                return None
+
+        res = DisenadorMSE(
+            H=_f("H", 6.0), L=_f("L", 4.2), Sv=_f("Sv", 0.6),
+            gamma_r=_f("gamma_r", 19.0), phi_r=_f("phi_r", 34.0),
+            gamma_b=_f("gamma_b", 18.0), phi_b=_f("phi_b", 30.0),
+            gamma_f=_f("gamma_f", 19.0), phi_f=_f("phi_f", 30.0), c_f=_f("c_f", 0.0),
+            sobrecarga=_f("sobrecarga", 0.0),
+            tipo_refuerzo=str(d.get("tipo_refuerzo", "geosintetico") or "geosintetico"),
+            Ta=_f("Ta", 30.0), F_pullout=_opt("F_pullout"),
+            alpha_scale=_opt("alpha_scale"), Rc=_f("Rc", 1.0)).disenar()
+        datos = DatosProyecto(
+            empresa=d.get("empresa", ""), proyecto=d.get("proyecto", ""),
+            ubicacion=d.get("ubicacion", ""), ingeniero=d.get("ingeniero", ""),
+            contratante=d.get("contratante", ""))
+        pdf_bytes = generar_memoria_mse(datos, res, d)
+        import io
+        buffer = io.BytesIO(pdf_bytes)
+        buffer.seek(0)
+        nombre = (datos.proyecto or "memoria_mse").replace(" ", "_")
+        return send_file(buffer, mimetype="application/pdf",
+                         as_attachment=True, download_name=f"{nombre}_mse.pdf")
+    except Exception as e:
+        return _error_response(e)
+
+
+# =============================================================================
+# MURO ANCLADO
+# =============================================================================
+def _construir_anclado(d: dict):
+    """Construye el ResultadoMuroAnclado desde el payload (SI)."""
+    from retaining_wall.core.muro_anclado import DisenadorMuroAnclado
+
+    def _f(k, dv):
+        v = d.get(k, dv)
+        try:
+            return float(v) if v not in (None, "") else dv
+        except (TypeError, ValueError):
+            return dv
+
+    z_list = d.get("z_anclajes")
+    if isinstance(z_list, str):
+        z_list = [float(x) for x in z_list.replace(",", " ").split() if x.strip()]
+    elif isinstance(z_list, list):
+        z_list = [float(x) for x in z_list]
+    else:
+        z_list = None
+
+    return DisenadorMuroAnclado(
+        H=_f("H", 10.0), gamma=_f("gamma", 19.0), phi=_f("phi", 30.0),
+        z_anclajes=z_list,
+        n_anclajes=int(_f("n_anclajes", 2)),
+        z_primero=_f("z_primero", 2.0), sv=_f("sv", 3.0),
+        inclinacion=_f("inclinacion", 15.0), sh=_f("sh", 2.5),
+        sobrecarga=_f("sobrecarga", 0.0),
+        tipo_suelo=str(d.get("tipo_suelo", "arena") or "arena"),
+        Su=_f("Su", 0.0),
+        tau_bond=_f("tau_bond", 150.0), d_bulbo=_f("d_bulbo", 0.15),
+        FS_pullout=_f("FS_pullout", 2.0), Lf_min=_f("Lf_min", 4.5)).disenar()
+
+
+def construir_muro_anclado_desde_datos(d: dict, incluir_imagen: bool = True) -> dict:
+    """Diseña un muro anclado y devuelve el resultado como dict JSON."""
+    res = _construir_anclado(d)
+    img_b64 = ""
+    if incluir_imagen:
+        try:
+            from retaining_wall.core.muro_anclado_reporte import dibujar_muro_anclado
+            from retaining_wall.core.dibujo import figura_a_png
+            img_b64 = base64.b64encode(
+                figura_a_png(dibujar_muro_anclado(res))).decode("ascii")
+        except Exception:
+            img_b64 = ""
+    anclajes = [{
+        "i": a.i, "z": round(a.z, 3), "Th": round(a.Th, 2),
+        "T_diseno": round(a.T_diseno, 1), "Lb": round(a.Lb, 2),
+        "Lf": round(a.Lf, 2), "L_total": round(a.L_total, 2),
+    } for a in res.anclajes]
+    return {
+        "H": res.H, "tipo_suelo": res.tipo_suelo, "n_anclajes": res.n_anclajes,
+        "p_max": round(res.p_max, 2), "Ka": round(res.Ka, 4),
+        "reaccion_base": round(res.reaccion_base, 2),
+        "momento_max": round(res.momento_max, 2),
+        "empuje_total": round(res.empuje_total, 2),
+        "anclajes": anclajes, "parametros": res.parametros,
+        "resumen": res.resumen, "avisos": res.avisos,
+        "imagen": f"data:image/png;base64,{img_b64}" if img_b64 else "",
+        "imagen_raw": img_b64,
+    }
+
+
+@app.route("/api/muro_anclado", methods=["POST"])
+def api_muro_anclado():
+    """Diseña un muro anclado por presiones aparentes."""
+    try:
+        d = request.get_json(force=True)
+        return jsonify({"ok": True, **construir_muro_anclado_desde_datos(d)})
+    except Exception as e:
+        return _error_response(e)
+
+
+@app.route("/api/muro_anclado_pdf", methods=["POST"])
+def api_muro_anclado_pdf():
+    """Genera la memoria de cálculo (PDF) del muro anclado."""
+    try:
+        d = request.get_json(force=True)
+        from retaining_wall.core.muro_anclado_reporte import generar_memoria_muro_anclado
+        res = _construir_anclado(d)
+        datos = DatosProyecto(
+            empresa=d.get("empresa", ""), proyecto=d.get("proyecto", ""),
+            ubicacion=d.get("ubicacion", ""), ingeniero=d.get("ingeniero", ""),
+            contratante=d.get("contratante", ""))
+        pdf_bytes = generar_memoria_muro_anclado(datos, res, d)
+        import io
+        buffer = io.BytesIO(pdf_bytes)
+        buffer.seek(0)
+        nombre = (datos.proyecto or "memoria_anclado").replace(" ", "_")
+        return send_file(buffer, mimetype="application/pdf",
+                         as_attachment=True, download_name=f"{nombre}_anclado.pdf")
+    except Exception as e:
+        return _error_response(e)
+
+
 def construir_dado_desde_datos(d: dict) -> dict:
     """Diseña un dado/cabezal de pilotes desde el payload (SI)."""
     from retaining_wall.core.dado import disenar_dado
@@ -1644,6 +1991,12 @@ def api_pdf():
             imagen_esfuerzos_zapata_png=img_zapata_bytes,
             tipo_muro=resultado.get("tipo_muro", "voladizo"),
             norma=d.get("norma", "NSR10"),
+            estabilidad_global=resultado.get("estabilidad_global"),
+            imagen_estab_global_png=(
+                base64.b64decode(resultado["estabilidad_global"]["imagen_raw"])
+                if resultado.get("estabilidad_global", {}).get("imagen_raw")
+                else None),
+            contrafuertes=resultado.get("contrafuertes"),
         )
 
         import io
