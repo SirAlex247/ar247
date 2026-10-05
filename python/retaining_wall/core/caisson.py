@@ -260,6 +260,90 @@ def _estructural(*, D, fc, fy, cuantia, tipo_refuerzo, db_long, db_trans,
 
 
 # ---------------------------------------------------------------------------
+# Diseño estructural avanzado: flexocompresión, lateral p-y, esbeltez, cortante
+# ---------------------------------------------------------------------------
+def _flexo_lateral(*, D, fc, fy, est, espiral, db_long, db_trans, recubrimiento,
+                   Pu, Mu, Hu, Lu_libre, k_pandeo, disipacion, estratos, L,
+                   cabeza, gamma_lat, cu_lat, phi_lat, nh_suelo, k_suelo,
+                   tipo_reaccion, eps50):
+    """Verificación del fuste del caisson como columna de hormigón: diagrama de
+    interacción P-M, análisis lateral no lineal p-y, amplificación de momento por
+    esbeltez (tramo libre por socavación/agua), cortante en sección circular,
+    confinamiento sísmico y pandeo de Davisson. Reutiliza los módulos de pilotes.
+
+    El suelo lateral para el p-y lo gobierna, por defecto, el estrato más
+    superficial (los primeros diámetros); se puede sobrescribir con ``*_lat``.
+    """
+    from .pilote_flexocompresion import (
+        amplificacion_momento, confinamiento_sismico, cortante_circular,
+        diagrama_interaccion, pandeo_davisson, verificar_flexocompresion)
+
+    n_barras = int(est["n_barras"])
+    Ec = 4700.0 * math.sqrt(fc) * 1000.0            # kPa
+    Ig = math.pi * D ** 4 / 64.0
+    EI = 0.5 * Ec * Ig                              # rigidez fisurada (p-y/Davisson)
+
+    # Suelo lateral: por defecto lo gobierna el estrato superficial.
+    top = estratos[0] if estratos else {"tipo": "arena", "gamma": 18.0,
+                                         "cu": 50.0, "phi": 30.0}
+    tipo_py = "arcilla" if (tipo_reaccion == "k" or cu_lat > 0
+                            or top["tipo"] == "arcilla") else "arena"
+    g_lat = gamma_lat if gamma_lat > 0 else max(top["gamma"] - 9.81, 3.0)
+    cu_ = cu_lat if cu_lat > 0 else top["cu"]
+    phi_ = phi_lat if phi_lat > 0 else top["phi"]
+
+    # Análisis lateral no lineal p-y (si hay carga/momento horizontal factorado).
+    py = {"aplica": False}
+    Mu_base, Vu_base = abs(Mu), abs(Hu)
+    if Hu > 1e-9 or abs(Mu) > 1e-9:
+        try:
+            from .pilote_py import analisis_py
+            py = analisis_py(EI=EI, L=min(L, 25.0), D=D, H=max(Hu, 0.0),
+                             M0=Mu, cabeza=cabeza, tipo=tipo_py, gamma=g_lat,
+                             cu=cu_ if cu_ > 0 else 50.0, eps50=eps50,
+                             phi=phi_ if phi_ > 0 else 32.0,
+                             nh=nh_suelo if nh_suelo > 0 else 5000.0)
+            if py.get("aplica"):
+                Mu_base = max(Mu_base, py["Mmax_kNm"])
+                Vu_base = max(Vu_base, py["Vmax_kN"])
+        except Exception:
+            py = {"aplica": False}
+
+    # Diagrama de interacción P-M de la sección circular.
+    diag = diagrama_interaccion(D=D, fc=fc, fy=fy, n_barras=n_barras,
+                                db_long=db_long * 1000.0, recubrimiento=recubrimiento,
+                                db_trans=db_trans * 1000.0, espiral=espiral)
+    # Esbeltez: amplifica el momento antes de verificar el diagrama.
+    esbeltez = amplificacion_momento(Pu=Pu, M2=Mu_base, D=D, fc=fc,
+                                     Lu=Lu_libre, k=k_pandeo, fy=fy)
+    Mc = esbeltez["Mc_kNm"]
+    flexocomp = verificar_flexocompresion(diag, Pu, Mc)
+
+    tr = est.get("transversal", {})
+    s_trans = (tr.get("paso_m") or tr.get("sep_max_m") or 0.0)
+    cortante = cortante_circular(Vu=Vu_base, D=D, fc=fc, fy=fy,
+                                 db_trans=db_trans * 1000.0,
+                                 recubrimiento=recubrimiento, espiral=espiral,
+                                 s_trans=s_trans)
+    confinamiento = confinamiento_sismico(D=D, fc=fc, fy=fy,
+                                          db_long=db_long * 1000.0,
+                                          recubrimiento=recubrimiento,
+                                          db_trans=db_trans * 1000.0,
+                                          espiral=espiral, Lu=Lu_libre,
+                                          disipacion=disipacion)
+    davisson = pandeo_davisson(Pu=Pu, EI=EI, Lu=Lu_libre, tipo=tipo_reaccion,
+                               nh=nh_suelo, k=k_suelo, beta=max(1.0, k_pandeo))
+
+    return {
+        "Mu_diseno_kNm": round(Mu_base, 1), "Vu_diseno_kN": round(Vu_base, 1),
+        "EI_kNm2": round(EI, 1),
+        "diagrama_interaccion": diag, "flexocompresion": flexocomp,
+        "esbeltez": esbeltez, "cortante": cortante,
+        "confinamiento": confinamiento, "analisis_py": py, "davisson": davisson,
+    }
+
+
+# ---------------------------------------------------------------------------
 # Diseño principal (norma elegible)
 # ---------------------------------------------------------------------------
 def disenar_caisson(*, D, L, estratos, P_servicio, norma="NSR10",
@@ -267,7 +351,12 @@ def disenar_caisson(*, D, L, estratos, P_servicio, norma="NSR10",
                     FS=0.0, Pu=0.0, factor_carga=1.6,
                     fc=21.0, fy=420.0, cuantia=0.01, tipo_refuerzo="espiral",
                     db_long=0.0254, db_trans=0.00953, recubrimiento=0.075,
-                    L_auto=False, L_max=40.0) -> dict:
+                    L_auto=False, L_max=40.0,
+                    Mu=0.0, Hu=0.0, Lu_libre=0.0, k_pandeo=2.0,
+                    disipacion="DMO", cabeza="libre",
+                    gamma_lat=0.0, cu_lat=0.0, phi_lat=0.0,
+                    nh_suelo=0.0, k_suelo=0.0, tipo_reaccion="nh",
+                    eps50=0.01) -> dict:
     """Diseña (o verifica) un caisson por la norma elegida (NSR-10 o CCP-14)."""
     norma = normalizar_norma(norma)
     avisos = []
@@ -305,6 +394,35 @@ def disenar_caisson(*, D, L, estratos, P_servicio, norma="NSR10",
     if not cumple_est:
         avisos.append("La capacidad estructural (columna) es insuficiente: aumenta D o la cuantía.")
 
+    # Flexocompresión (P-M), lateral p-y, esbeltez, cortante circular, confinamiento.
+    espiral = str(tipo_refuerzo).startswith(("espiral", "zuncho"))
+    flexo = _flexo_lateral(
+        D=D, fc=fc, fy=fy, est=est, espiral=espiral, db_long=db_long,
+        db_trans=db_trans, recubrimiento=recubrimiento, Pu=Pu_est, Mu=Mu, Hu=Hu,
+        Lu_libre=Lu_libre, k_pandeo=k_pandeo, disipacion=disipacion,
+        estratos=estratos_n, L=L, cabeza=cabeza, gamma_lat=gamma_lat,
+        cu_lat=cu_lat, phi_lat=phi_lat, nh_suelo=nh_suelo, k_suelo=k_suelo,
+        tipo_reaccion=tipo_reaccion, eps50=eps50)
+    est.update(flexo)
+    cumple_flexo = (flexo["flexocompresion"]["cumple"] and flexo["cortante"]["cumple"]
+                    and flexo["davisson"]["cumple"])
+    if flexo["Mu_diseno_kNm"] > 0 and not flexo["flexocompresion"]["cumple"]:
+        avisos.append("El punto (Pu, Mu) cae fuera del diagrama de interacción P-M: "
+                      "aumenta D, la cuantía o reduce el momento/carga lateral.")
+    if not flexo["cortante"]["cumple"]:
+        avisos.append("El cortante supera φVn de la sección circular: cierra el paso "
+                      "del refuerzo transversal (espiral/estribos) o aumenta D.")
+    if flexo["esbeltez"].get("inestable"):
+        avisos.append("Fuste inestable por esbeltez (Pu > 0.75·Pc): reduce el tramo "
+                      "libre Lu, aumenta D o arriostra el caisson.")
+    elif flexo["esbeltez"]["es_esbelto"]:
+        avisos.append(f"Fuste esbelto (kLu/r = {flexo['esbeltez']['esbeltez_klu_r']} > "
+                      f"{flexo['esbeltez']['limite']:.0f}): momento amplificado por "
+                      f"δ_ns = {flexo['esbeltez']['delta_ns']}.")
+    if flexo["davisson"].get("aplica") and not flexo["davisson"]["cumple"]:
+        avisos.append("Pandeo del fuste parcialmente embebido (Davisson): Pu supera "
+                      "P_adm; reduce Lu o aumenta D.")
+
     # Volumen de concreto: fuste cilíndrico + campana (tronco de cono) si aplica.
     A_fuste = math.pi * D ** 2 / 4.0
     if cap["acampanada"] and altura_campana > 0:
@@ -330,8 +448,10 @@ def disenar_caisson(*, D, L, estratos, P_servicio, norma="NSR10",
         "geotecnico": geo,
         "estructural": est,
         "cargas": {"P_servicio_kN": round(P_servicio, 1),
-                   "factor_carga": factor_carga},
-        "cumple": cumple_geo and cumple_est,
+                   "factor_carga": factor_carga,
+                   "Pu_estructural_kN": round(Pu_est, 1),
+                   "Mu_kNm": round(Mu, 1), "Hu_kN": round(Hu, 1)},
+        "cumple": cumple_geo and cumple_est and cumple_flexo,
         "avisos": avisos,
     }
 

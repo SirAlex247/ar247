@@ -31,6 +31,7 @@ MODULOS = [
     "test_placa",
     "test_placa_estructural",
     "test_caisson",
+    "test_caisson_estructural",
     "test_pilote_dado_normas",
     "test_dado_estructural",
     "test_pilote_flexocompresion",

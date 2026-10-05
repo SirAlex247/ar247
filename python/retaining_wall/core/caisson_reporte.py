@@ -265,6 +265,59 @@ def generar_memoria_caisson(datos, resultado, entradas) -> bytes:
     el.append(Paragraph(f"<b>Verificación estructural: {_ok(est['cumple'])}</b> "
                         f"(φP_n ≥ P_u).", p))
 
+    # 5. Flexocompresión, esbeltez, cortante circular, lateral p-y y pandeo
+    fx = est.get("flexocompresion")
+    if fx:
+        es = est["esbeltez"]; cv = est["cortante"]; cf = est["confinamiento"]
+        py = est.get("analisis_py", {}); dv = est["davisson"]
+        el.append(Spacer(1, 6))
+        el.append(Paragraph("5. Flexocompresión, esbeltez, cortante y lateral", h2))
+        el.append(Paragraph(
+            "El fuste se verifica como columna de hormigón: diagrama de interacción "
+            "P-M de la sección circular, momento amplificado por esbeltez en el tramo "
+            "libre (socavación/agua), cortante en sección circular, confinamiento de la "
+            "zona de rótula plástica y pandeo de Davisson del tramo parcialmente embebido.", p))
+        el.append(_tabla([
+            ["Verificación", "Demanda", "Capacidad", "D/C", "Estado"],
+            ["Flexocompresión P-M", f"M_u={est['Mu_diseno_kNm']/G:.1f} tonf·m",
+             f"φM_n={fx['phiMn_disponible_kNm']/G:.1f} tonf·m", f"{fx['ratio_interaccion']}",
+             "cumple" if fx["cumple"] else "no cumple"],
+            ["Cortante circular", f"V_u={_tf(cv['Vu_kN']):.1f} tonf",
+             f"φV_n={_tf(cv['phiVn_kN']):.1f} tonf", "—",
+             "cumple" if cv["cumple"] else "no cumple"],
+        ], [4.2 * cm, 3.6 * cm, 3.8 * cm, 1.6 * cm, 2.2 * cm]))
+        # Esbeltez
+        if es.get("es_esbelto"):
+            el.append(Paragraph(
+                f"Esbeltez: kL<sub>u</sub>/r = {es['esbeltez_klu_r']} &gt; {es['limite']:.0f} → "
+                f"momento amplificado δ<sub>ns</sub> = {es['delta_ns']}"
+                + (" (inestable: P<sub>u</sub> &gt; 0.75·P<sub>c</sub>)." if es.get("inestable") else "."), small))
+        else:
+            el.append(Paragraph(
+                f"Esbeltez: kL<sub>u</sub>/r = {es['esbeltez_klu_r']} ≤ {es['limite']:.0f} → "
+                f"columna corta, sin amplificación de momento.", small))
+        # Lateral p-y
+        if py and py.get("aplica"):
+            el.append(Paragraph(
+                f"Análisis lateral no lineal (curvas p-y, {py['tipo']}): deflexión en "
+                f"cabeza y<sub>0</sub> = {py['y0_mm']} mm · M<sub>máx</sub> = "
+                f"{py['Mmax_kNm']/G:.1f} tonf·m a z = {py['z_Mmax_m']} m · V<sub>máx</sub> = "
+                f"{_tf(py['Vmax_kN']):.1f} tonf. El refuerzo longitudinal pleno se extiende "
+                f"al menos hasta z ≈ {py['z_refuerzo_m']} m.", small))
+        # Pandeo Davisson
+        if dv.get("aplica"):
+            el.append(Paragraph(
+                f"Pandeo del fuste parcialmente embebido (Davisson): L<sub>e</sub> = "
+                f"{dv['Le_m']} m · P<sub>cr</sub> = {_tf(dv['Pcr_kN']):.1f} tonf · P<sub>adm</sub> = "
+                f"{_tf(dv['Padm_kN']):.1f} tonf → <b>{_ok(dv['cumple'])}</b>.", small))
+        # Confinamiento
+        paso_txt = (f"espiral paso ≤ {cf['paso_confinado_m']*100:.0f} cm"
+                    if cf.get("paso_confinado_m") is not None
+                    else f"estribos sep ≤ {cf.get('sep_confinada_m', 0)*100:.0f} cm")
+        el.append(Paragraph(
+            f"Confinamiento sísmico ({cf['disipacion']}): longitud de confinamiento "
+            f"L<sub>o</sub> = {cf['longitud_confinamiento_m']} m, {paso_txt}.", small))
+
     el.append(Spacer(1, 5))
     el.append(Paragraph(f"<b>Resultado global: {_ok(resultado.get('cumple', False))}</b>", p))
     for a in resultado.get("avisos", []):

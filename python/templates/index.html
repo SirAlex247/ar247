@@ -1590,6 +1590,13 @@
               <div class="field"><label class="field-label">P<sub>u</sub> mayorada <span class="unit">tonf (opc.)</span></label>
                 <input type="number" id="cai_Pu" data-mag="force" class="input" placeholder="(vacío = factor)" step="10"></div>
             </div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">M<sub>u</sub> en cabeza <span class="unit">tonf·m (opc.)</span></label>
+                <input type="number" id="cai_Mu" data-mag="moment" class="input" placeholder="0" step="5"></div>
+              <div class="field"><label class="field-label">H<sub>u</sub> lateral <span class="unit">tonf (opc.)</span></label>
+                <input type="number" id="cai_Hu" data-mag="force" class="input" placeholder="0" step="5"></div>
+            </div>
+            <div class="hint mt-3">M<sub>u</sub> y H<sub>u</sub> activan el diagrama de interacción P-M y el análisis lateral no lineal (curvas p-y). El suelo lateral lo toma del estrato superficial.</div>
           </div>
 
           <div class="card">
@@ -1628,9 +1635,43 @@
             <div class="field-row">
               <div class="field"><label class="field-label">Ø barra long. <span class="unit">mm</span></label>
                 <input type="number" id="cai_dbl" class="input" value="25.4" step="0.1"></div>
+              <div class="field"><label class="field-label">Ø estribo/espiral <span class="unit">mm</span></label>
+                <input type="number" id="cai_dbt" class="input" value="9.53" step="0.1"></div>
+            </div>
+            <div class="field-row">
               <div class="field"><label class="field-label">Recubrimiento <span class="unit">m</span></label>
                 <input type="number" id="cai_rec" data-mag="length" class="input" value="0.075" step="0.005"></div>
             </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><div class="card-title">Flexocompresión · esbeltez · lateral</div></div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">Tramo libre L<sub>u</sub> <span class="unit">m (socavación/agua)</span></label>
+                <input type="number" id="cai_Lulibre" data-mag="length" class="input" placeholder="0" step="0.5"></div>
+              <div class="field"><label class="field-label">Condición de cabeza</label>
+                <select id="cai_cabeza" class="input">
+                  <option value="libre" selected>Libre (en voladizo)</option>
+                  <option value="fija">Fija (empotrada en dado)</option>
+                </select></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">k (longitud efectiva)</label>
+                <input type="number" id="cai_kpand" class="input" value="2.0" step="0.1"></div>
+              <div class="field"><label class="field-label">Disipación sísmica</label>
+                <select id="cai_disip" class="input">
+                  <option value="DMI">DMI (mínima)</option>
+                  <option value="DMO" selected>DMO (moderada)</option>
+                  <option value="DES">DES (especial)</option>
+                </select></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">n<sub>h</sub> suelo (arena) <span class="unit">kN/m³ (opc.)</span></label>
+                <input type="number" id="cai_nh" class="input" placeholder="auto 5000" step="500"></div>
+              <div class="field"><label class="field-label">ε<sub>50</sub> (arcilla)</label>
+                <input type="number" id="cai_eps50" class="input" value="0.01" step="0.005"></div>
+            </div>
+            <div class="hint mt-3">Verificación del fuste como columna de hormigón: diagrama P-M, momento amplificado por esbeltez en el tramo libre, cortante en sección circular, confinamiento de la zona de rótula y pandeo de Davisson. Todo estructural; la reacción lateral del suelo (p-y) usa el estrato superficial.</div>
           </div>
         </div>
 

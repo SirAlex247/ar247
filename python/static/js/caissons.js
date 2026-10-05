@@ -11,6 +11,7 @@ let _caiLastPayload = null;
 
 const _catf = kN => fromSI(kN, 'force');       // kN → tonf
 const _catp = kPa => fromSI(kPa, 'pressure');  // kPa → tonf/m²
+const _catm = kNm => fromSI(kNm, 'moment');    // kN·m → tonf·m
 const _caset = (id, v) => { const el = $('#' + id); if (el) el.textContent = v; };
 const _caok = (b) => b ? '<span style="color:var(--green-300)">cumple</span>'
                        : '<span style="color:var(--status-err-tx)">no cumple</span>';
@@ -112,7 +113,18 @@ function caiRecolectar() {
     cuantia: numv('cai_rho', 0.01),
     tipo_refuerzo: ($('#cai_reftr') && $('#cai_reftr').value) || 'espiral',
     db_long: numv('cai_dbl', 25.4) / 1000.0,
+    db_trans: numv('cai_dbt', 9.53) / 1000.0,
     recubrimiento: _caiMag($('#cai_rec')),
+    // Flexocompresión / lateral (todo estructural; el suelo lateral se toma del
+    // estrato superficial si no se da override).
+    Mu: _caiMag($('#cai_Mu')) || 0,
+    Hu: _caiMag($('#cai_Hu')) || 0,
+    Lu_libre: _caiMag($('#cai_Lulibre')) || 0,
+    k_pandeo: numv('cai_kpand', 2.0),
+    cabeza: ($('#cai_cabeza') && $('#cai_cabeza').value) || 'libre',
+    disipacion: ($('#cai_disip') && $('#cai_disip').value) || 'DMO',
+    nh_suelo: numv('cai_nh', 0),
+    eps50: numv('cai_eps50', 0.01),
   };
 }
 
@@ -138,6 +150,54 @@ async function caiCalcular() {
     if (btn) btn.disabled = false;
     if (lbl) lbl.textContent = 'Calcular';
   }
+}
+
+/* Líneas de las verificaciones estructurales avanzadas (flexocompresión,
+   lateral p-y, esbeltez, cortante circular, confinamiento, pandeo). */
+function _caiLineasEstr(e) {
+  if (!e || !e.flexocompresion) return '';
+  const fx = e.flexocompresion, es = e.esbeltez, cv = e.cortante,
+        cf = e.confinamiento, py = e.analisis_py, dv = e.davisson;
+  let h = '';
+  // Flexocompresión P-M (siempre presente)
+  h += `<div class="pil-line"><b>Flexocompresión (diagrama P-M):</b> φM<sub>n</sub> disp. =
+    ${_catm(fx.phiMn_disponible_kNm).toFixed(1)} tonf·m ·
+    M<sub>u,diseño</sub>=${_catm(e.Mu_diseno_kNm).toFixed(1)} tonf·m → ${_caok(fx.cumple)}
+    (D/C=${fx.ratio_interaccion})</div>`;
+  // Esbeltez
+  if (es && es.es_esbelto) {
+    h += `<div class="pil-line"><b>Esbeltez:</b> kL<sub>u</sub>/r=${es.esbeltez_klu_r} &gt; ${es.limite} →
+      momento amplificado δ<sub>ns</sub>=${es.delta_ns}${es.inestable ? ' <span style="color:var(--status-err-tx)">(inestable: P<sub>u</sub>&gt;0.75·P<sub>c</sub>)</span>' : ''}</div>`;
+  } else if (es) {
+    h += `<div class="pil-line" style="opacity:.8"><b>Esbeltez:</b> kL<sub>u</sub>/r=${es.esbeltez_klu_r} ≤ ${es.limite} → columna corta (sin amplificación)</div>`;
+  }
+  // Cortante circular
+  if (cv) {
+    h += `<div class="pil-line"><b>Cortante (sección circular):</b> V<sub>u</sub>=${_catf(cv.Vu_kN).toFixed(1)} ·
+      φV<sub>n</sub>=${_catf(cv.phiVn_kN).toFixed(1)} tonf → ${_caok(cv.cumple)}${cv.requiere_refuerzo ? ' · requiere aporte del transversal' : ''}</div>`;
+  }
+  // Análisis lateral p-y
+  if (py && py.aplica) {
+    h += `<div class="pil-line"><b>Lateral no lineal (p-y, ${py.tipo}):</b> y<sub>cabeza</sub>=${py.y0_mm} mm ·
+      M<sub>máx</sub>=${_catm(py.Mmax_kNm).toFixed(1)} tonf·m @ z=${py.z_Mmax_m} m ·
+      V<sub>máx</sub>=${_catf(py.Vmax_kN).toFixed(1)} tonf · refuerzo pleno hasta z≈${py.z_refuerzo_m} m</div>`;
+  }
+  // Pandeo de Davisson (tramo libre)
+  if (dv && dv.aplica) {
+    h += `<div class="pil-line"><b>Pandeo (Davisson, tramo libre):</b> P<sub>cr</sub>=${_catf(dv.Pcr_kN).toFixed(1)} ·
+      P<sub>adm</sub>=${_catf(dv.Padm_kN).toFixed(1)} tonf (L<sub>e</sub>=${dv.Le_m} m) → ${_caok(dv.cumple)}</div>`;
+  }
+  // Confinamiento sísmico
+  if (cf) {
+    const paso = cf.paso_confinado_m != null ? `espiral paso ≤ ${(cf.paso_confinado_m * 100).toFixed(0)} cm`
+      : (cf.sep_confinada_m != null ? `estribos sep ≤ ${(cf.sep_confinada_m * 100).toFixed(0)} cm` : '');
+    h += `<div class="pil-line" style="opacity:.85"><b>Confinamiento (${cf.disipacion}):</b> L<sub>o</sub>=${cf.longitud_confinamiento_m} m · ${paso}</div>`;
+  }
+  // Diagrama P-M (reusa el SVG de pilotes si está disponible)
+  if (typeof pilDiagramaPM === 'function' && e.diagrama_interaccion) {
+    h += `<div style="max-width:360px;margin:10px auto 0">${pilDiagramaPM(e.diagrama_interaccion, fx)}</div>`;
+  }
+  return h;
 }
 
 function caiRender(res) {
@@ -176,6 +236,7 @@ function caiRender(res) {
     ${verif}
     <div class="pil-line"><b>Estructural (columna):</b> φP<sub>n</sub>=${_catf(e.phiPn_kN).toFixed(1)} tonf ·
       ${e.n_barras} Ø${e.db_long_mm} mm (ρ=${e.cuantia_pct}%) → ${_caok(e.cumple)} (D/C=${e.ratio})</div>
+    ${_caiLineasEstr(e)}
     <table class="pil-table" style="margin-top:8px">
       <thead><tr><th>Estrato</th><th style="text-align:right">Tramo (m)</th><th style="text-align:right">f (tonf/m²)</th><th style="text-align:right">Q_fuste (tonf)</th></tr></thead>
       <tbody>${filas}</tbody>

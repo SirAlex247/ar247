@@ -1590,7 +1590,16 @@ def construir_caisson_desde_datos(d: dict) -> dict:
         tipo_refuerzo=str(d.get("tipo_refuerzo", "espiral") or "espiral"),
         db_long=_f(d.get("db_long"), 0.0254), db_trans=_f(d.get("db_trans"), 0.00953),
         recubrimiento=_f(d.get("recubrimiento"), 0.075),
-        L_auto=bool(d.get("L_auto", False)), L_max=_f(d.get("L_max"), 40.0))
+        L_auto=bool(d.get("L_auto", False)), L_max=_f(d.get("L_max"), 40.0),
+        Mu=_f(d.get("Mu")), Hu=_f(d.get("Hu")),
+        Lu_libre=_f(d.get("Lu_libre")), k_pandeo=_f(d.get("k_pandeo"), 2.0),
+        disipacion=str(d.get("disipacion", "DMO") or "DMO"),
+        cabeza=str(d.get("cabeza", "libre") or "libre"),
+        gamma_lat=_f(d.get("gamma_lat")), cu_lat=_f(d.get("cu_lat")),
+        phi_lat=_f(d.get("phi_lat")), nh_suelo=_f(d.get("nh_suelo")),
+        k_suelo=_f(d.get("k_suelo")),
+        tipo_reaccion=str(d.get("tipo_reaccion", "nh") or "nh"),
+        eps50=_f(d.get("eps50"), 0.01))
 
 
 @app.route("/api/caisson", methods=["POST"])
