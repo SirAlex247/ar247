@@ -1793,6 +1793,42 @@
                 <input type="number" id="maq_ampadm" class="input" value="50" step="5"></div>
             </div>
           </div>
+
+          <div class="card">
+            <div class="card-header"><div class="card-title">Diseño estructural del bloque</div></div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">f'c <span class="unit">kgf/cm²</span></label>
+                <input type="number" id="maq_fc" data-mag="stress" class="input" value="280" step="5"></div>
+              <div class="field"><label class="field-label">fy refuerzo <span class="unit">kgf/cm²</span></label>
+                <input type="number" id="maq_fy" data-mag="stress" class="input" value="4200" step="100"></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">Factor de fatiga (dinámico)</label>
+                <input type="number" id="maq_ffat" class="input" value="2.0" step="0.5"></div>
+              <div class="field"><label class="field-label">Ø barra refuerzo <span class="unit">mm</span></label>
+                <input type="number" id="maq_dbref" class="input" value="19.05" step="0.1"></div>
+            </div>
+            <div class="card-header" style="margin-top:4px"><div class="card-title" style="font-size:13px;opacity:.9">Pernos de anclaje (opcional)</div></div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">N° de pernos</label>
+                <input type="number" id="maq_npern" class="input" placeholder="0" step="1"></div>
+              <div class="field"><label class="field-label">Ø perno <span class="unit">mm</span></label>
+                <input type="number" id="maq_dbpern" class="input" placeholder="0" step="1"></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">fy perno <span class="unit">kgf/cm²</span></label>
+                <input type="number" id="maq_fypern" data-mag="stress" class="input" value="2550" step="50"></div>
+              <div class="field"><label class="field-label">Embebido h<sub>ef</sub> <span class="unit">m</span></label>
+                <input type="number" id="maq_hefpern" data-mag="length" class="input" placeholder="auto 12·Ø" step="0.05"></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">Brazo del grupo <span class="unit">m</span></label>
+                <input type="number" id="maq_seppern" data-mag="length" class="input" placeholder="auto 0.7·B" step="0.1"></div>
+              <div class="field"><label class="field-label">Recubrimiento <span class="unit">m</span></label>
+                <input type="number" id="maq_rec" data-mag="length" class="input" value="0.075" step="0.005"></div>
+            </div>
+            <div class="hint mt-3">Diseño del hormigón y el acero del bloque: validación de bloque rígido (ACI 351.3R), fuerza dinámica de diseño con factor de fatiga, pernos de anclaje (ACI 318-19 Cap. 17: tracción/cortante del acero y rotura del concreto) y refuerzo mínimo cada cara. Las propiedades dinámicas del suelo (G, V<sub>s</sub>) son input.</div>
+          </div>
         </div>
 
         <!-- DERECHA: resultados + esquema -->

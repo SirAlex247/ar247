@@ -37,6 +37,7 @@ MODULOS = [
     "test_pilote_flexocompresion",
     "test_pilote_avanzado",
     "test_maquinas",
+    "test_maquina_estructural",
     "test_pipeline_muro",
     "test_modulos",
     "test_api",

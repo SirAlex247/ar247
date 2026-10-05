@@ -77,6 +77,113 @@ def _estado_resonancia(r, banda=0.2):
 
 
 # ---------------------------------------------------------------------------
+# Diseño estructural del bloque (concreto/acero): rigidez, fuerza dinámica de
+# diseño, pernos de anclaje y refuerzo mínimo. (El soporte dinámico y las
+# propiedades del suelo son inputs; aquí se dimensiona el hormigón y el acero.)
+# ---------------------------------------------------------------------------
+def _diseno_estructural_bloque(*, B, L, h, hcg, F0_N, W_total_kN, fc, fy,
+                               factor_fatiga, n_pernos, db_perno_mm, fy_perno,
+                               embed_perno, sep_pernos, db_ref_mm, recubrimiento):
+    """Diseño estructural del bloque de cimentación: validación de bloque rígido
+    (ACI 351.3R), fuerza dinámica de diseño con factor de fatiga, pernos de
+    anclaje (ACI 318-19 Cap. 17, preinstalados) y refuerzo mínimo cada cara."""
+    av = []
+    Lmax = max(B, L)
+
+    # (1) Rigidez del bloque — valida el método de parámetros concentrados.
+    h_min = 0.60
+    h_rec = max(h_min, 0.20 * Lmax)
+    cumple_rigidez = h >= h_min - 1e-9
+    rigido = h >= 0.20 * Lmax - 1e-9
+    if not cumple_rigidez:
+        av.append(f"Espesor del bloque h = {h:.2f} m < 0.60 m mínimo (ACI 351.3R): auméntalo.")
+    elif not rigido:
+        av.append(f"Verifica la rigidez del bloque: h = {h:.2f} m < 0.20·L_máx = "
+                  f"{0.20*Lmax:.2f} m; el método de parámetros concentrados supone bloque rígido.")
+    rigidez = {"h_m": round(h, 3), "h_min_m": h_min, "h_recomendado_m": round(h_rec, 2),
+               "relacion_h_Lmax": round(h / Lmax, 3) if Lmax > 0 else None,
+               "rigido": rigido, "cumple": cumple_rigidez}
+
+    # (2) Fuerza dinámica de diseño (factor de fatiga sobre el desbalance, ACI 351.3R).
+    F_din_N = factor_fatiga * F0_N
+    M_din_N = F_din_N * hcg                              # momento de vuelco de diseño
+    fuerza_diseno = {"factor_fatiga": factor_fatiga,
+                     "F0_kN": round(F0_N / 1000.0, 2),
+                     "F_dinamica_diseno_kN": round(F_din_N / 1000.0, 2),
+                     "M_vuelco_diseno_kNm": round(M_din_N / 1000.0, 2)}
+
+    # (3) Pernos de anclaje (ACI 318-19 Cap. 17, anclaje preinstalado / cast-in).
+    pernos = {"aplica": False}
+    if n_pernos and n_pernos >= 2 and db_perno_mm > 0:
+        n = int(n_pernos)
+        s = sep_pernos if sep_pernos > 0 else 0.7 * B   # brazo del grupo de pernos
+        n_t = max(1, n // 2)                            # pernos del lado en tracción
+        W_N = W_total_kN * 1000.0
+        T_vuelco = (M_din_N / s) / n_t if s > 0 else 0.0
+        T_vert = F_din_N / n
+        T_estab = W_N / n                               # estabilizante (peso muerto)
+        T_bolt = max(0.0, T_vuelco + T_vert - T_estab)  # N por perno
+        V_bolt = F_din_N / n                            # cortante por perno (N)
+        Ab = math.pi * (db_perno_mm / 1000.0) ** 2 / 4.0            # m²
+        Ase = 0.75 * Ab                                 # área efectiva (roscado)
+        futa = min(1.25 * fy_perno, 860.0) * 1000.0     # kPa
+        phiNsa = 0.75 * Ase * futa * 1000.0             # N (φ=0.75 tracción acero dúctil)
+        phiVsa = 0.65 * 0.6 * Ase * futa * 1000.0       # N (φ=0.65 cortante acero)
+        hef_mm = (embed_perno if embed_perno > 0 else 12.0 * db_perno_mm / 1000.0) * 1000.0
+        Nb = 10.0 * math.sqrt(fc) * hef_mm ** 1.5       # N (kc=10 cast-in, SI)
+        phiNcb = 0.70 * Nb                              # N (perno aislado, sin reducción borde/grupo)
+        rt = T_bolt / phiNsa if phiNsa > 0 else 0.0
+        rv = V_bolt / phiVsa if phiVsa > 0 else 0.0
+        inter = rt ** (5.0 / 3.0) + rv ** (5.0 / 3.0)
+        cumple_acero = inter <= 1.0 + 1e-6
+        cumple_breakout = T_bolt <= phiNcb + 1e-6
+        pernos = {"aplica": True, "n": n, "db_mm": round(db_perno_mm, 1),
+                  "brazo_m": round(s, 3), "hef_m": round(hef_mm / 1000.0, 3),
+                  "T_perno_kN": round(T_bolt / 1000.0, 2), "V_perno_kN": round(V_bolt / 1000.0, 2),
+                  "phiNsa_kN": round(phiNsa / 1000.0, 1), "phiVsa_kN": round(phiVsa / 1000.0, 1),
+                  "phiNcb_kN": round(phiNcb / 1000.0, 1), "interaccion": round(inter, 3),
+                  "cumple_acero": cumple_acero, "cumple_breakout": cumple_breakout,
+                  "cumple": cumple_acero and cumple_breakout}
+        if not cumple_acero:
+            av.append("Pernos de anclaje: no cumplen la interacción tracción-cortante del acero; "
+                      "aumenta el Ø o el número de pernos.")
+        if not cumple_breakout:
+            av.append("Pernos de anclaje: la rotura del concreto (breakout) no cumple; aumenta la "
+                      "longitud embebida h_ef o f'c (verifica también borde/grupo).")
+    cumple_pernos = (not pernos["aplica"]) or pernos["cumple"]
+
+    # (4) Refuerzo mínimo del bloque (retracción-temperatura, cada cara/dirección).
+    rho_st = 0.0018
+    ab = math.pi * (db_ref_mm / 1000.0) ** 2 / 4.0      # m²
+
+    def _malla(perp_w):
+        As_total = rho_st * perp_w * h                  # m² (toda la sección)
+        As_face = As_total / 2.0
+        n_face = max(2, math.ceil(As_face / ab)) if ab > 0 else 0
+        sep = (perp_w / n_face) if n_face > 0 else 0.0
+        if sep > 0.30:                                  # máx 300 mm → añade barras
+            n_face = max(n_face, math.ceil(perp_w / 0.30))
+            sep = perp_w / n_face
+        return {"As_cara_cm2": round(As_face * 1e4, 1), "n_barras_cara": int(n_face),
+                "sep_cm": round(sep * 100, 1)}
+
+    masa_ac = rho_st * (L * h) * B * 7850.0 + rho_st * (B * h) * L * 7850.0   # kg
+    vol = B * L * h
+    refuerzo = {"db_mm": round(db_ref_mm, 1), "rho": rho_st, "sep_max_cm": 30.0,
+                "dir_B": _malla(L), "dir_L": _malla(B),
+                "acero_kg_m3": round(masa_ac / vol, 1) if vol > 0 else 0.0,
+                "recubrimiento_m": round(recubrimiento, 3)}
+
+    cumple_estr = cumple_rigidez and cumple_pernos
+    return {
+        "rigidez": rigidez, "fuerza_diseno": fuerza_diseno,
+        "pernos": pernos, "refuerzo": refuerzo,
+        "cumple_rigidez": cumple_rigidez, "cumple_pernos": cumple_pernos,
+        "cumple": cumple_estr,
+    }, av
+
+
+# ---------------------------------------------------------------------------
 # Diseño principal
 # ---------------------------------------------------------------------------
 def disenar_maquina(*, B, L, h, peso_maquina, rpm,
@@ -84,7 +191,11 @@ def disenar_maquina(*, B, L, h, peso_maquina, rpm,
                     hcg_maquina=0.0, torque_dinamico=0.0,
                     G_suelo=0.0, Vs=0.0, nu=0.33, gamma_suelo=18.0,
                     gamma_concreto=24.0, q_adm=0.0,
-                    amplitud_admisible_um=50.0) -> dict:
+                    amplitud_admisible_um=50.0,
+                    fc=21.0, fy=420.0, factor_fatiga=2.0,
+                    n_pernos=0, db_perno=0.0, fy_perno=250.0,
+                    embed_perno=0.0, sep_pernos=0.0,
+                    db_refuerzo=19.05, recubrimiento=0.075) -> dict:
     """Analiza un bloque de cimentación de máquina (ACI 351.3R, método de
     parámetros concentrados).
 
@@ -205,7 +316,15 @@ def disenar_maquina(*, B, L, h, peso_maquina, rpm,
         if not cumple_suelo:
             avisos.append("La presión estática supera la admisible: aumenta B×L.")
 
-    cumple = sep_ok and amp_ok and cumple_suelo
+    # --- Diseño estructural del bloque (concreto/acero) ---
+    estr, av_estr = _diseno_estructural_bloque(
+        B=B, L=L, h=h, hcg=hcg, F0_N=F0_N, W_total_kN=W_total, fc=fc, fy=fy,
+        factor_fatiga=factor_fatiga, n_pernos=n_pernos, db_perno_mm=db_perno,
+        fy_perno=fy_perno, embed_perno=embed_perno, sep_pernos=sep_pernos,
+        db_ref_mm=db_refuerzo, recubrimiento=recubrimiento)
+    avisos += av_estr
+
+    cumple = sep_ok and amp_ok and cumple_suelo and estr["cumple"]
 
     return {
         "tipo": "maquina",
@@ -227,6 +346,7 @@ def disenar_maquina(*, B, L, h, peso_maquina, rpm,
                        "q_adm_kPa": round(q_adm, 1) if q_adm else None,
                        "ratio": round(q_est / q_adm, 3) if q_adm else None,
                        "cumple": cumple_suelo},
+        "estructural": estr,
         "resonancia_ok": sep_ok, "amplitud_ok": amp_ok,
         "cumple": cumple, "avisos": avisos,
     }

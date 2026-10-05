@@ -139,9 +139,52 @@ def generar_memoria_maquina(datos, resultado, entradas) -> bytes:
         el.append(Paragraph(f"Presión estática = {_tm(geo['q_estatica_kPa']):.1f} tonf/m² "
                             "(define q_adm para verificar).", p))
 
+    # 4. Diseño estructural del bloque (concreto/acero)
+    estr = resultado.get("estructural")
+    if estr:
+        rg = estr["rigidez"]; fd = estr["fuerza_diseno"]; pr = estr["pernos"]; rf = estr["refuerzo"]
+        el.append(Paragraph("4. Diseño estructural del bloque (concreto / acero)", h2))
+        el.append(Paragraph(
+            "El soporte dinámico y las propiedades del suelo (G, V<sub>s</sub>, q<sub>adm</sub>) "
+            "son datos; aquí se dimensiona el hormigón y el acero del bloque.", p))
+        el.append(_tabla([
+            ["Bloque rígido (ACI 351.3R)", f"h = {rg['h_m']} m (mín. {rg['h_min_m']} m)",
+             "h/L_máx", f"{rg['relacion_h_Lmax']} → {'rígido' if rg['rigido'] else 'verificar'}"],
+            ["Fuerza dinámica de diseño", f"factor fatiga ×{fd['factor_fatiga']}",
+             "F_d / M_vuelco",
+             f"{_tf(fd['F_dinamica_diseno_kN']):.1f} tonf / {_tm(fd['M_vuelco_diseno_kNm']):.1f} tonf·m"],
+        ], [4.6 * cm, 4.0 * cm, 2.8 * cm, 3.8 * cm], header=False))
+        # Pernos de anclaje
+        if pr.get("aplica"):
+            el.append(Spacer(1, 3))
+            el.append(Paragraph("4.1 Pernos de anclaje (ACI 318-19 Cap. 17, preinstalados)", p))
+            el.append(_tabla([
+                ["Concepto", "Demanda", "Capacidad φ", "Estado"],
+                ["Tracción acero", f"T = {_tf(pr['T_perno_kN']):.1f} tonf",
+                 f"φN_sa = {_tf(pr['phiNsa_kN']):.1f} tonf", "—"],
+                ["Cortante acero", f"V = {_tf(pr['V_perno_kN']):.1f} tonf",
+                 f"φV_sa = {_tf(pr['phiVsa_kN']):.1f} tonf", "—"],
+                ["Interacción N-V (5/3)", f"{pr['interaccion']}", "≤ 1.0",
+                 "cumple" if pr["cumple_acero"] else "no cumple"],
+                ["Rotura del concreto", f"T = {_tf(pr['T_perno_kN']):.1f} tonf",
+                 f"φN_cb = {_tf(pr['phiNcb_kN']):.1f} tonf",
+                 "cumple" if pr["cumple_breakout"] else "no cumple"],
+            ], [4.2 * cm, 3.6 * cm, 4.0 * cm, 2.6 * cm]))
+            el.append(Paragraph(
+                f"{pr['n']} pernos Ø{pr['db_mm']} mm, embebido h<sub>ef</sub> = {pr['hef_m']} m, "
+                f"brazo del grupo = {pr['brazo_m']} m. La rotura del concreto es de perno aislado; "
+                "verifica además distancias al borde y efecto de grupo.", small))
+        # Refuerzo mínimo
+        el.append(Spacer(1, 3))
+        el.append(Paragraph(
+            f"4.2 Refuerzo mínimo del bloque (ρ = {rf['rho']}, cada cara y dirección): "
+            f"dir. B → {rf['dir_B']['n_barras_cara']} Ø{rf['db_mm']} mm @ {rf['dir_B']['sep_cm']} cm; "
+            f"dir. L → {rf['dir_L']['n_barras_cara']} Ø{rf['db_mm']} mm @ {rf['dir_L']['sep_cm']} cm. "
+            f"Contenido de acero ≈ {rf['acero_kg_m3']} kg/m³ (separación máx. {rf['sep_max_cm']:.0f} cm).", p))
+
     el.append(Spacer(1, 5))
     el.append(Paragraph(f"<b>Resultado global: {_ok(resultado.get('cumple', False))}</b> "
-                        "(sin resonancia, amplitud y presión admisibles).", p))
+                        "(sin resonancia, amplitud y presión admisibles; bloque y pernos verificados).", p))
     for a in resultado.get("avisos", []):
         el.append(Paragraph(f"⚠ {a}", small))
     el.append(Spacer(1, 12))

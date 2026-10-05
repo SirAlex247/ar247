@@ -1651,7 +1651,14 @@ def construir_maquina_desde_datos(d: dict) -> dict:
         hcg_maquina=_f(d.get("hcg_maquina")), torque_dinamico=_f(d.get("torque_dinamico")),
         G_suelo=_f(d.get("G_suelo")), Vs=_f(d.get("Vs")), nu=_f(d.get("nu"), 0.33),
         gamma_suelo=_f(d.get("gamma_suelo"), 18.0), gamma_concreto=_f(d.get("gamma_concreto"), 24.0),
-        q_adm=_f(d.get("q_adm")), amplitud_admisible_um=_f(d.get("amplitud_admisible_um"), 50.0))
+        q_adm=_f(d.get("q_adm")), amplitud_admisible_um=_f(d.get("amplitud_admisible_um"), 50.0),
+        fc=_f(d.get("fc"), 21.0), fy=_f(d.get("fy"), 420.0),
+        factor_fatiga=_f(d.get("factor_fatiga"), 2.0),
+        n_pernos=int(_f(d.get("n_pernos"), 0)), db_perno=_f(d.get("db_perno")),
+        fy_perno=_f(d.get("fy_perno"), 250.0), embed_perno=_f(d.get("embed_perno")),
+        sep_pernos=_f(d.get("sep_pernos")),
+        db_refuerzo=_f(d.get("db_refuerzo"), 19.05),
+        recubrimiento=_f(d.get("recubrimiento"), 0.075))
 
 
 @app.route("/api/maquina", methods=["POST"])

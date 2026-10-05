@@ -17,6 +17,7 @@ function _maqMag(el) {
 
 const _maf = kN => fromSI(kN, 'force');       // kN → tonf
 const _map = kPa => fromSI(kPa, 'pressure');  // kPa → tonf/m²
+const _mam = kNm => fromSI(kNm, 'moment');    // kN·m → tonf·m
 const _maset = (id, v) => { const el = $('#' + id); if (el) el.textContent = v; };
 const _maok = (b) => b ? '<span style="color:var(--green-300)">cumple</span>'
                        : '<span style="color:var(--status-err-tx)">no cumple</span>';
@@ -38,6 +39,17 @@ function maqRecolectar() {
     gamma_suelo: _maqMag($('#maq_gs')) || 18,
     q_adm: _maqMag($('#maq_qadm')) || 0,
     amplitud_admisible_um: numv('maq_ampadm', 50),
+    // Diseño estructural del bloque (concreto/acero/pernos).
+    fc: _maqMag($('#maq_fc')) || 21,
+    fy: _maqMag($('#maq_fy')) || 420,
+    factor_fatiga: numv('maq_ffat', 2.0),
+    n_pernos: numv('maq_npern', 0),
+    db_perno: numv('maq_dbpern', 0),
+    fy_perno: _maqMag($('#maq_fypern')) || 250,
+    embed_perno: _maqMag($('#maq_hefpern')) || 0,
+    sep_pernos: _maqMag($('#maq_seppern')) || 0,
+    db_refuerzo: numv('maq_dbref', 19.05),
+    recubrimiento: _maqMag($('#maq_rec')) || 0.075,
   };
 }
 
@@ -63,6 +75,38 @@ async function maqCalcular() {
     if (btn) btn.disabled = false;
     if (lbl) lbl.textContent = 'Calcular';
   }
+}
+
+/* Líneas del diseño estructural del bloque: rigidez, fuerza dinámica de diseño,
+   pernos de anclaje y refuerzo mínimo. */
+function _maqLineasEstr(e) {
+  if (!e) return '';
+  const rg = e.rigidez, fd = e.fuerza_diseno, pr = e.pernos, rf = e.refuerzo;
+  let h = '';
+  if (rg) {
+    h += `<div class="pil-line"><b>Bloque rígido:</b> h=${rg.h_m} m ·
+      h<sub>mín</sub>=${rg.h_min_m} m · h/L<sub>máx</sub>=${rg.relacion_h_Lmax} →
+      ${rg.rigido ? _maok(true) : '<span style="color:var(--status-warn-tx)">verificar rigidez</span>'}
+      ${_maok(rg.cumple)}</div>`;
+  }
+  if (fd) {
+    h += `<div class="pil-line"><b>Fuerza dinámica de diseño</b> (fatiga ×${fd.factor_fatiga}):
+      F<sub>d</sub>=${_maf(fd.F_dinamica_diseno_kN).toFixed(2)} tonf ·
+      M<sub>vuelco</sub>=${_mam(fd.M_vuelco_diseno_kNm).toFixed(2)} tonf·m</div>`;
+  }
+  if (pr && pr.aplica) {
+    h += `<div class="pil-line"><b>Pernos de anclaje:</b> ${pr.n} Ø${pr.db_mm} mm (h<sub>ef</sub>=${pr.hef_m} m) ·
+      T=${_maf(pr.T_perno_kN).toFixed(1)}/φN<sub>sa</sub>=${_maf(pr.phiNsa_kN).toFixed(1)} ·
+      V=${_maf(pr.V_perno_kN).toFixed(1)}/φV<sub>sa</sub>=${_maf(pr.phiVsa_kN).toFixed(1)} tonf ·
+      interacción=${pr.interaccion} → ${_maok(pr.cumple_acero)}</div>
+      <div class="pil-line" style="opacity:.85">Rotura del concreto (breakout): φN<sub>cb</sub>=${_maf(pr.phiNcb_kN).toFixed(1)} tonf → ${_maok(pr.cumple_breakout)}</div>`;
+  }
+  if (rf) {
+    h += `<div class="pil-line"><b>Refuerzo mínimo</b> (ρ=${rf.rho}, cada cara): dir. B →
+      ${rf.dir_B.n_barras_cara} Ø${rf.db_mm} mm @ ${rf.dir_B.sep_cm} cm · dir. L →
+      ${rf.dir_L.n_barras_cara} Ø${rf.db_mm} mm @ ${rf.dir_L.sep_cm} cm · ${rf.acero_kg_m3} kg/m³</div>`;
+  }
+  return h;
 }
 
 function maqRender(res) {
@@ -99,6 +143,8 @@ function maqRender(res) {
     </table>
     <div class="pil-line" style="margin-top:8px"><b>Amplitud máx</b> ${res.amplitud_max_um.toFixed(1)} / ${res.amplitud_admisible_um.toFixed(0)} µm → ${_maok(res.amplitud_ok)} ·
       <b>resonancia</b> ${_maok(res.resonancia_ok)} · <b>presión</b> ${_maok(geo.cumple)}</div>
+    <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border)"><b style="color:var(--green-300)">Diseño estructural del bloque</b></div>
+    ${_maqLineasEstr(res.estructural)}
     ${avisos}`;
 }
 
