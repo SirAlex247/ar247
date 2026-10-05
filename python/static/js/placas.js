@@ -38,6 +38,10 @@ function plRecolectar() {
     B: _plMag($('#pl_B')) || 0,
     L: _plMag($('#pl_L')) || 0,
     h: _plMag($('#pl_h')) || 0,
+    fc_columna: _plMag($('#pl_fccol')) || 0,
+    db_dowel: (numv('pl_dbdow', 0) || 0) / 1000.0,
+    Mcol: _plMag($('#pl_mcol')) || 0,
+    Mcol_y: _plMag($('#pl_mcoly')) || 0,
   };
 }
 
@@ -79,10 +83,16 @@ function _pAsMax(e) {
 }
 
 function _pFranjaFilas(fr, nom) {
-  const row = (a, cara) => `<tr><td>${nom} · ${cara}</td>
-    <td style="text-align:right">${_pltm(cara === 'inferior (M⁺)' ? fr.M_pos_kNm : fr.M_neg_kNm).toFixed(1)}</td>
-    <td style="text-align:right">${a.As_cm2}${a.gobierna_minimo ? ' <span class="muted">(mín)</span>' : ''}</td>
-    <td style="text-align:right">${a.n_barras} Ø${a.db_mm} @ ${a.sep_cm} cm</td></tr>`;
+  const row = (a, cara) => {
+    const dv = a.desarrollo || {};
+    const ld = (dv.ld_m != null) ? `${dv.ld_m}/${dv.ld_disponible_m}${dv.cumple ? '' : ' <span style="color:var(--status-err-tx)">✗</span>'}` : '—';
+    const rho = (a.cuantia && !a.cuantia.cumple) ? ' <span style="color:var(--status-err-tx)">✗ρ</span>' : '';
+    return `<tr><td>${nom} · ${cara}</td>
+      <td style="text-align:right">${_pltm(cara === 'inferior (M⁺)' ? fr.M_pos_kNm : fr.M_neg_kNm).toFixed(1)}</td>
+      <td style="text-align:right">${a.As_cm2}${a.gobierna_minimo ? ' <span class="muted">(mín)</span>' : ''}</td>
+      <td style="text-align:right">${a.n_barras} Ø${a.db_mm} @ ${a.sep_cm} cm${rho}</td>
+      <td style="text-align:right">${ld}</td></tr>`;
+  };
   return row(fr.acero_inferior, 'inferior (M⁺)') + row(fr.acero_superior, 'superior (M⁻)');
 }
 
@@ -106,16 +116,25 @@ function plRender(res) {
       e=(${geo.e_x_m}, ${geo.e_y_m}) m · q<sub>máx</sub> ${_pltp(geo.q_max_kPa).toFixed(1)} /
       q<sub>mín</sub> ${_pltp(geo.q_min_kPa).toFixed(1)} / q<sub>adm</sub> ${_pltp(geo.q_adm_kPa).toFixed(1)} tonf/m²
       → ${_plok(geo.cumple)} (D/C=${geo.ratio})</div>
-    <div class="pil-line"><b>Punzonamiento crítico:</b> columna #${pc.columna} (${pc.posicion}) ·
-      V<sub>u</sub>=${_pltf(pc.Vu_kN).toFixed(1)} φV<sub>c</sub>=${_pltf(pc.phiVc_kN).toFixed(1)} tonf
-      → ${_plok(pc.cumple)} (D/C=${pc.ratio})</div>
+    ${_plPunzLine(pc)}
     <div class="pil-line"><b>Cortante viga ancha:</b> franja X ${_plok(e.franja_x.cumple_cortante)} ·
       franja Y ${_plok(e.franja_y.cumple_cortante)}</div>
+    ${e.transf_critica ? `<div class="pil-line"><b>Transferencia columna→losa (C.15.8):</b> col. crítica #${e.transf_critica.columna} · aplastamiento D/C=${e.transf_critica.ratio} ${_plok(e.transf_critica.cumple_aplastamiento)} · dowels ${e.transf_critica.n_dowels} Ø${e.transf_critica.db_dowel_mm} ${_plok(e.transf_critica.cumple_dowels)}</div>` : ''}
     <table class="pil-table" style="margin-top:8px">
-      <thead><tr><th>Franja / cara</th><th style="text-align:right">M (tonf·m)</th><th style="text-align:right">As (cm²)</th><th style="text-align:right">Distribución</th></tr></thead>
+      <thead><tr><th>Franja / cara</th><th style="text-align:right">M (tonf·m)</th><th style="text-align:right">As (cm²)</th><th style="text-align:right">Distribución</th><th style="text-align:right">ℓd/disp (m)</th></tr></thead>
       <tbody>${_pFranjaFilas(e.franja_x, 'X')}${_pFranjaFilas(e.franja_y, 'Y')}</tbody>
     </table>
     ${avisos}`;
+}
+
+function _plPunzLine(pc) {
+  if (pc.vu_momento_kPa != null && pc.vu_momento_kPa > 0.1) {
+    return `<div class="pil-line"><b>Punzonamiento crítico (con momento γv):</b> columna #${pc.columna} (${pc.posicion}) ·
+      v<sub>u</sub> directo ${_pltp(pc.vu_directo_kPa).toFixed(1)} + excéntrico ${_pltp(pc.vu_momento_kPa).toFixed(1)} = <b>${_pltp(pc.vu_total_kPa).toFixed(1)}</b> vs φv<sub>c</sub> ${_pltp(pc.phi_vc_kPa).toFixed(1)} tonf/m²
+      (γ<sub>v</sub>=${pc.gamma_v_x}) → ${_plok(pc.cumple_momento)} (D/C=${pc.ratio_momento})</div>`;
+  }
+  return `<div class="pil-line"><b>Punzonamiento crítico:</b> columna #${pc.columna} (${pc.posicion}) ·
+      V<sub>u</sub>=${_pltf(pc.Vu_kN).toFixed(1)} φV<sub>c</sub>=${_pltf(pc.phiVc_kN).toFixed(1)} tonf → ${_plok(pc.cumple)} (D/C=${pc.ratio})</div>`;
 }
 
 /* ---------- Esquema: planta con columnas + presiones (SVG) ---------- */

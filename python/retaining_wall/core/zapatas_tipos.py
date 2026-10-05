@@ -27,9 +27,16 @@ from .zapata import (
     PHI_FLEX,
     _alpha_s,
     _area_barra,
+    _banda_central,
+    _control_fisuracion,
+    _cortante_dos_vias_momento,
     _cortante_una_via,
+    _cuantia_maxima,
     _flexion,
+    _jc_c,
+    _longitud_desarrollo,
     _redondea_arriba,
+    _transferencia_carga,
     disenar_zapata,
 )
 
@@ -59,6 +66,11 @@ def _As_de_Mu(Mu, b_ancho, d, fc, fy, rec, db, h):
     ab = _area_barra(db)
     n = max(2, math.ceil(As_fin / ab)) if ab > 0 else 0
     sep = (b_ancho - 2 * rec) / (n - 1) if n > 1 else 0.0
+    fis = _control_fisuracion(sep, rec, fy)
+    if not fis["cumple"] and fis["sep_max_m"] > 0:
+        n = max(n, math.ceil((b_ancho - 2 * rec) / fis["sep_max_m"]) + 1)
+        sep = (b_ancho - 2 * rec) / (n - 1) if n > 1 else 0.0
+        fis = _control_fisuracion(sep, rec, fy)
     return {
         "Mu_kNm": round(Mu, 1),
         "As_req_cm2": round(As_req * 1e4, 2),
@@ -67,6 +79,8 @@ def _As_de_Mu(Mu, b_ancho, d, fc, fy, rec, db, h):
         "gobierna_minimo": As_min >= As_req,
         "n_barras": n, "db_mm": round(db * 1000.0, 1),
         "sep_cm": round(sep * 100.0, 1),
+        "fisuracion": fis,
+        "cuantia": _cuantia_maxima(As_fin, b_ancho, d, fc, fy),
     }
 
 
@@ -90,6 +104,32 @@ def _punz_columna(Pu_col, qu, c1, c2, h, sqrt_fc, rec, db, posicion):
         "Vu_kN": round(Vu, 1), "phiVc_kN": round(phiVc, 1),
         "ratio": round(Vu / phiVc, 3) if phiVc > 0 else None,
         "cumple": Vu <= phiVc,
+    }
+
+
+def _punz_columna_momento(Pu_col, qu, c1, c2, h, sqrt_fc, rec, db, posicion,
+                          Mux=0.0, Muy=0.0):
+    """Punzonamiento de una columna con transferencia de momento (γv), para
+    zapatas combinadas (NSR-10 C.11.11.7)."""
+    base = _punz_columna(Pu_col, qu, c1, c2, h, sqrt_fc, rec, db, posicion)
+    d, bo, Vu, vc = base["d_m"], base["b0_m"], base["Vu_kN"], base["vc_MPa"]
+    v_dir = Vu / (bo * d) if (bo * d) > 0 else 0.0
+    b1x, b2x = c1 + d, c2 + d
+    gvx = 1.0 - 1.0 / (1.0 + (2.0 / 3.0) * math.sqrt(b1x / b2x))
+    Jcx, cx = _jc_c(b1x, b2x, d)
+    v_mx = gvx * abs(Mux) * cx / Jcx if Jcx > 0 else 0.0
+    b1y, b2y = c2 + d, c1 + d
+    gvy = 1.0 - 1.0 / (1.0 + (2.0 / 3.0) * math.sqrt(b1y / b2y))
+    Jcy, cy = _jc_c(b1y, b2y, d)
+    v_my = gvy * abs(Muy) * cy / Jcy if Jcy > 0 else 0.0
+    vt = v_dir + v_mx + v_my
+    phi_vc = PHI_CORTE * vc * 1000.0
+    return {
+        **base, "gamma_v_x": round(gvx, 3),
+        "vu_directo_kPa": round(v_dir, 1), "vu_momento_kPa": round(v_mx + v_my, 1),
+        "vu_total_kPa": round(vt, 1), "phi_vc_kPa": round(phi_vc, 1),
+        "ratio_momento": round(vt / phi_vc, 3) if phi_vc > 0 else None,
+        "cumple_momento": vt <= phi_vc,
     }
 
 
@@ -127,7 +167,8 @@ def disenar_combinada(*, c1a, c2a, P1_servicio, c1b, c2b, P2_servicio,
                       fc=21.0, fy=420.0, recubrimiento=0.075, db=0.01905,
                       B=0.0, L=0.0, h=0.0, Df=1.5,
                       gamma_suelo=18.0, gamma_concreto=24.0,
-                      Pu1=0.0, Pu2=0.0, factor_carga=1.5) -> dict:
+                      Pu1=0.0, Pu2=0.0, factor_carga=1.5,
+                      fc_columna=0.0, db_dowel=0.0) -> dict:
     """Zapata combinada rectangular bajo dos columnas alineadas en L.
 
     La zapata se dibuja como una viga en la dirección L (eje de columnas) de
@@ -265,15 +306,41 @@ def disenar_combinada(*, c1a, c2a, P1_servicio, c1b, c2b, P2_servicio,
         return _flexion(banda, volado, qu, d, fc, fy, recubrimiento, db, h)
     flex_transv_1 = _transversal(c1a)
     flex_transv_2 = _transversal(c1b)
+    # Longitud de desarrollo (transversales = voladizo; longitudinales corren L).
+    flex_transv_1["desarrollo"] = _longitud_desarrollo(db, fc, fy, (B - c1a) / 2.0, recubrimiento)
+    flex_transv_2["desarrollo"] = _longitud_desarrollo(db, fc, fy, (B - c1b) / 2.0, recubrimiento)
+    flex_inf["desarrollo"] = _longitud_desarrollo(db, fc, fy, L / 2.0, recubrimiento)
+    flex_sup["desarrollo"] = _longitud_desarrollo(db, fc, fy, L / 2.0, recubrimiento)
 
-    # ------- Punzonamiento por columna -------
-    punz_1 = _punz_columna(Pu1, qu, c1a, c2a, h, sqrt_fc, recubrimiento, db,
-                           "borde" if medianeria_izquierda else "interior")
-    punz_2 = _punz_columna(Pu2, qu, c1b, c2b, h, sqrt_fc, recubrimiento, db, "interior")
+    # ------- Punzonamiento por columna (con transferencia de momento) -------
+    Mu1 = factor_carga * abs(M1_servicio)
+    Mu2 = factor_carga * abs(M2_servicio)
+    punz_1 = _punz_columna_momento(Pu1, qu, c1a, c2a, h, sqrt_fc, recubrimiento, db,
+                                   "borde" if medianeria_izquierda else "interior", Mu1)
+    punz_2 = _punz_columna_momento(Pu2, qu, c1b, c2b, h, sqrt_fc, recubrimiento, db,
+                                   "interior", Mu2)
 
-    cumple_cort = (punz_1["cumple"] and punz_2["cumple"] and cumple_vlong)
+    # ------- Transferencia de carga columna→zapata (aplastamiento + dowels) -------
+    fc_col = fc_columna if (fc_columna and fc_columna > 0) else fc
+    db_dow = db_dowel if (db_dowel and db_dowel > 0) else db
+    transf_1 = _transferencia_carga(Pu1, c1a, c2a, h, B, L, fc, fc_col, fy,
+                                    recubrimiento, db_dow)
+    transf_2 = _transferencia_carga(Pu2, c1b, c2b, h, B, L, fc, fc_col, fy,
+                                    recubrimiento, db_dow)
+
+    cumple_cort = (punz_1["cumple_momento"] and punz_2["cumple_momento"] and cumple_vlong)
+    cumple_transf = (transf_1["cumple_aplastamiento"] and transf_1["cumple_dowels"]
+                     and transf_2["cumple_aplastamiento"] and transf_2["cumple_dowels"])
     if not cumple_cort:
-        avisos.append("El cortante (punzonamiento o viga ancha) no cumple: aumenta h.")
+        avisos.append("El cortante (punzonamiento con momento o viga ancha) no "
+                      "cumple: aumenta h.")
+    if not cumple_transf:
+        avisos.append("Revisa la transferencia de carga columna-zapata "
+                      "(aplastamiento o dowels) en alguna columna.")
+    if (flex_transv_1["desarrollo"]["requiere_gancho"]
+            or flex_transv_2["desarrollo"]["requiere_gancho"]):
+        avisos.append("El refuerzo transversal no desarrolla su longitud en el "
+                      "voladizo: usa gancho o barras de menor diámetro.")
 
     return {
         "tipo": "combinada",
@@ -306,7 +373,9 @@ def disenar_combinada(*, c1a, c2a, P1_servicio, c1b, c2b, P2_servicio,
             "flexion_transversal_col1": flex_transv_1,
             "flexion_transversal_col2": flex_transv_2,
             "punzonamiento_col1": punz_1, "punzonamiento_col2": punz_2,
+            "transferencia_col1": transf_1, "transferencia_col2": transf_2,
             "cumple_cortante": cumple_cort,
+            "cumple_transferencia": cumple_transf,
         },
         "avisos": avisos,
     }
@@ -402,7 +471,8 @@ def disenar_triangular(*, c1, c2, P_servicio, q_adm, M_servicio=0.0,
                        base=0.0, altura=0.0,
                        fc=21.0, fy=420.0, recubrimiento=0.075, db=0.01905,
                        h=0.0, Df=1.5, gamma_suelo=18.0, gamma_concreto=24.0,
-                       Pu=0.0, factor_carga=1.5, posicion="esquina") -> dict:
+                       Pu=0.0, factor_carga=1.5, posicion="esquina",
+                       fc_columna=0.0, db_dowel=0.0) -> dict:
     """Zapata de planta triangular isósceles (columna en el baricentro).
 
     Área = ½·base·altura. Con la columna en el baricentro y sin momento la
@@ -443,11 +513,23 @@ def disenar_triangular(*, c1, c2, P_servicio, q_adm, M_servicio=0.0,
     d = max(0.05, h - recubrimiento - db)
     volado = (lado_eq - max(c1, c2)) / 2.0
     flex = _flexion(lado_eq, volado, qu, d, fc, fy, recubrimiento, db, h)
+    flex["desarrollo"] = _longitud_desarrollo(db, fc, fy, volado, recubrimiento)
     cuv = _cortante_una_via(lado_eq, volado, qu, d, sqrt_fc)
-    punz = _punz_columna(Pu, qu, c1, c2, h, sqrt_fc, recubrimiento, db, posicion)
-    cumple_cort = cuv["cumple"] and punz["cumple"]
+    Mu_col = factor_carga * abs(M_servicio)
+    punz = _punz_columna_momento(Pu, qu, c1, c2, h, sqrt_fc, recubrimiento, db,
+                                 posicion, Mu_col)
+    # Transferencia de carga columna→zapata.
+    fc_col = fc_columna if (fc_columna and fc_columna > 0) else fc
+    db_dow = db_dowel if (db_dowel and db_dowel > 0) else db
+    transf = _transferencia_carga(Pu, c1, c2, h, lado_eq, lado_eq, fc, fc_col, fy,
+                                  recubrimiento, db_dow)
+    cumple_cort = cuv["cumple"] and punz["cumple_momento"]
+    cumple_transf = transf["cumple_aplastamiento"] and transf["cumple_dowels"]
     if not cumple_cort:
         avisos.append("El cortante no cumple: aumenta h.")
+    if not cumple_transf:
+        avisos.append("Revisa la transferencia de carga columna-zapata "
+                      "(aplastamiento o dowels).")
     avisos.append("Diseño estructural aproximado con zapata cuadrada equivalente "
                   "de igual área; para geometrías triangulares críticas usa un "
                   "análisis por elementos finitos o bielas-tirantes.")
@@ -472,7 +554,9 @@ def disenar_triangular(*, c1, c2, P_servicio, q_adm, M_servicio=0.0,
             "qu_kPa": round(qu, 1), "Pu_kN": round(Pu, 1),
             "factor_carga": factor_carga, "h_m": round(h, 3), "d_m": round(d, 4),
             "punzonamiento": punz, "una_via": cuv, "flexion": flex,
+            "transferencia": transf,
             "cumple_cortante": cumple_cort,
+            "cumple_transferencia": cumple_transf,
         },
         "avisos": avisos,
     }
@@ -503,6 +587,9 @@ def disenar_zapata_tipo(tipo: str, params: dict) -> dict:
         gamma_concreto=f("gamma_concreto", 24.0),
         factor_carga=f("factor_carga", 1.5),
     )
+    # Datos estructurales extra (solo aislada/esquinera, que usan disenar_zapata):
+    # f'c de la columna para el aplastamiento y Ø de los dowels.
+    comunes_estr = dict(comunes, fc_columna=f("fc_columna"), db_dowel=f("db_dowel"))
 
     if t in _TIPOS_AISLADA:
         # Forma: alias antiguos ("rectangular"/"cuadrada") o el campo "forma".
@@ -513,7 +600,7 @@ def disenar_zapata_tipo(tipo: str, params: dict) -> dict:
             My_servicio=f("My_servicio"), q_adm=f("q_adm", 200.0),
             B=f("B"), L=f("L"), h=f("h"), Pu=f("Pu"),
             posicion=s("posicion", "interior"),
-            relacion_LB=f("relacion_LB", 1.0), **comunes)
+            relacion_LB=f("relacion_LB", 1.0), **comunes_estr)
 
     if t in ("conectada", "esquinera", "medianera"):
         res = disenar_esquinera(
@@ -532,14 +619,14 @@ def disenar_zapata_tipo(tipo: str, params: dict) -> dict:
             separacion=f("separacion", 4.0), q_adm=f("q_adm", 200.0),
             medianeria_izquierda=bool(params.get("medianeria_izquierda", True)),
             M1_servicio=f("M1_servicio"), M2_servicio=f("M2_servicio"),
-            B=f("B"), L=f("L"), h=f("h"), Pu1=f("Pu1"), Pu2=f("Pu2"), **comunes)
+            B=f("B"), L=f("L"), h=f("h"), Pu1=f("Pu1"), Pu2=f("Pu2"), **comunes_estr)
 
     if t == "triangular":
         return disenar_triangular(
             c1=f("c1", 0.40), c2=f("c2", 0.40), P_servicio=f("P_servicio"),
             q_adm=f("q_adm", 200.0), M_servicio=f("M_servicio"),
             base=f("base"), altura=f("altura"), h=f("h"),
-            Pu=f("Pu"), posicion=s("posicion", "esquina"), **comunes)
+            Pu=f("Pu"), posicion=s("posicion", "esquina"), **comunes_estr)
 
     # Desconocido → aislada
     return disenar_aislada(

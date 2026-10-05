@@ -28,6 +28,7 @@ function dadRecolectar() {
     e: dReadMag($('#dado_e')) || 0,
     h: dReadMag($('#dado_h')) || 0,
     fc: dReadMag($('#dado_fc')),
+    fc_columna: dReadMag($('#dado_fccol')) || 0,
     fy: dReadMag($('#dado_fy')),
     db: db_m, db_col: db_m,
     recubrimiento: dReadMag($('#dado_rec')),
@@ -69,6 +70,17 @@ function _asGobernante(e) {
   return Math.max(e.as_x_rec_cm2 || 0, e.as_y_rec_cm2 || 0);
 }
 
+function _dadPunzLine(pc, pp) {
+  const okf = (b) => b ? '<span style="color:var(--green-300)">cumple</span>'
+                       : '<span style="color:var(--status-err-tx)">no cumple</span>';
+  if (pc.vu_momento_kPa != null && pc.vu_momento_kPa > 0.1) {
+    const _tp = kPa => fromSI(kPa, 'pressure');
+    return `<div class="pil-line"><b>Punzonamiento columna (con momento γv):</b>
+      v<sub>u</sub> ${_tp(pc.vu_directo_kPa).toFixed(1)}+${_tp(pc.vu_momento_kPa).toFixed(1)}=<b>${_tp(pc.vu_total_kPa).toFixed(1)}</b> vs φv<sub>c</sub> ${_tp(pc.phi_vc_kPa).toFixed(1)} tonf/m² (γ<sub>v</sub>=${pc.gamma_v_x}) → ${okf(pc.cumple_momento)} (D/C=${pc.ratio_momento}) · pilote D/C=${pp.ratio} ${okf(pp.cumple)}</div>`;
+  }
+  return `<div class="pil-line"><b>Punzonamiento:</b> columna D/C=${pc.ratio} ${okf(pc.cumple)} · pilote D/C=${pp.ratio} ${okf(pp.cumple)}</div>`;
+}
+
 function dadRender(res) {
   const g = res.geometria, c = res.cargas, e = res.estructural;
   const set = (id, v) => { const el = $('#' + id); if (el) el.textContent = v; };
@@ -81,11 +93,14 @@ function dadRender(res) {
 
   const ok = (b) => b ? '<span style="color:var(--green-300)">cumple</span>'
                       : '<span style="color:var(--status-err-tx)">no cumple</span>';
-  const fila = (f, dir) => `
+  const fila = (f, dir) => {
+    const rho = (f.cuantia && !f.cuantia.cumple) ? ' <span style="color:var(--status-err-tx)">✗ρ</span>' : '';
+    return `
     <tr><td>${dir}</td>
         <td style="text-align:right">${_dtm(f.Mu_kNm).toFixed(2)}</td>
         <td style="text-align:right">${f.As_cm2}${f.gobierna_minimo ? ' <span class="muted">(mín)</span>' : ''}</td>
-        <td style="text-align:right">${f.n_barras} Ø${f.db_mm} @ ${f.sep_cm} cm</td></tr>`;
+        <td style="text-align:right">${f.n_barras} Ø${f.db_mm} @ ${f.sep_cm} cm${rho}</td></tr>`;
+  };
 
   // reacciones
   const reac = c.reacciones_kN.map((r, i) => `P${i + 1}: <b>${_dtf(r).toFixed(1)}</b>`).join(' · ');
@@ -127,11 +142,13 @@ function dadRender(res) {
     <div class="pil-line"><b>Geometría:</b> ${g.forma === 'tri' ? 'triangular' : 'rectangular'} ${g.Bx_m}×${g.Ly_m} m · h=${g.h_m} m · d=${g.d_m} m · <b>${g.clasificacion}</b> (m=${g.m_voladizo_m} m)</div>
     <div class="pil-line"><b>Reacciones (c/peso):</b> ${reac} tonf</div>
     <div class="pil-line"><b>R<sub>máx</sub> pilote:</b> ${_dtf(c.Pmax_kN).toFixed(1)} / ${capTxt} → ${ok(c.cumple_pilote)} (D/C=${c.ratio_pilote != null ? c.ratio_pilote : '—'})</div>
-    <div class="pil-line"><b>Punzonamiento:</b> columna D/C=${e.punz_columna.ratio} ${ok(e.punz_columna.cumple)} · pilote D/C=${e.punz_pilote.ratio} ${ok(e.punz_pilote.cumple)}</div>
+    ${_dadPunzLine(e.punz_columna, e.punz_pilote)}
     <div class="pil-line"><b>Cortante 1 vía:</b> dir X → D/C=${e.cortante_x.ratio} ${ok(e.cortante_x.cumple)} · dir Y → D/C=${e.cortante_y.ratio} ${ok(e.cortante_y.cumple)}</div>
+    ${e.transferencia ? `<div class="pil-line"><b>Transferencia columna→dado (C.15.8):</b> aplastamiento D/C=${e.transferencia.ratio} ${ok(e.transferencia.cumple_aplastamiento)} · dowels ${e.transferencia.n_dowels} Ø${e.transferencia.db_dowel_mm} (ℓ<sub>dc</sub>=${(e.transferencia.ldc_dowel_m*100).toFixed(0)}/${(e.transferencia.ldc_disponible_m*100).toFixed(0)} cm) ${ok(e.transferencia.cumple_dowels)}</div>` : ''}
     ${flexHtml}
     ${bielaHtml}
     ${adoptado}
+    ${e.anclaje_tensor ? `<div class="pil-line"><b>Anclaje del tensor:</b> ℓ<sub>d</sub>=${(e.anclaje_tensor.ld_m*100).toFixed(0)} cm vs disp. ${(e.anclaje_tensor.disp_x_m*100).toFixed(0)}/${(e.anclaje_tensor.disp_y_m*100).toFixed(0)} cm → ${e.anclaje_tensor.requiere_gancho ? '<span style="color:var(--status-err-tx)">requiere gancho</span>' : '<span style="color:var(--green-300)">desarrolla recto</span>'}</div>` : ''}
     <div class="pil-line"><b>Anclaje columna:</b> ℓ<sub>dc</sub> = ${(e.ldc_columna_m * 100).toFixed(0)} cm</div>
     ${avisos}`;
 }

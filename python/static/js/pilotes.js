@@ -37,11 +37,69 @@ function pilRecolectar() {
     D: pilReadMag($('#pil_D')) || 0,
     N: parseInt($('#pil_N').value) || 0,
     L_max: pilReadMag($('#pil_Lmax')) || 25,
+    // Solicitaciones estructurales (opcional)
+    M_servicio: pilReadMag($('#pil_M')) || 0,
+    T_servicio: pilReadMag($('#pil_T')) || 0,
+    Lu_libre: pilReadMag($('#pil_Lu')) || 0,
+    k_pandeo: parseFloat($('#pil_k') && $('#pil_k').value) || 1.0,
+    disipacion: ($('#pil_disip') && $('#pil_disip').value) || 'DMO',
+    // Grupo y carga lateral (opcional)
+    Mx_servicio: pilReadMag($('#pil_Mx')) || 0,
+    My_servicio: pilReadMag($('#pil_My')) || 0,
+    H_servicio: pilReadMag($('#pil_H')) || 0,
+    s_grupo: pilReadMag($('#pil_sgrp')) || 0,
+    tipo_reaccion: ($('#pil_treac') && $('#pil_treac').value) || 'nh',
+    nh_suelo: (($('#pil_treac') && $('#pil_treac').value) === 'nh') ? (pilReadMag($('#pil_reac')) || 0) : 0,
+    k_suelo: (($('#pil_treac') && $('#pil_treac').value) === 'k') ? (pilReadMag($('#pil_reac')) || 0) : 0,
+    cabeza_pilote: ($('#pil_cabeza') && $('#pil_cabeza').value) || 'libre',
+    // Análisis p-y (suelo) y downdrag
+    gamma_lat: pilReadMag($('#pil_glat')) || 0,
+    phi_lat: (($('#pil_treac') && $('#pil_treac').value) === 'nh') ? (parseFloat($('#pil_phicu') && $('#pil_phicu').value) || 0) : 0,
+    cu_lat: (($('#pil_treac') && $('#pil_treac').value) === 'k') ? ((parseFloat($('#pil_phicu') && $('#pil_phicu').value) || 0) * 9.80665) : 0,
+    eps50: parseFloat($('#pil_eps50') && $('#pil_eps50').value) || 0.01,
+    fs_negativa: pilReadMag($('#pil_fsneg')) || 0,
+    L_downdrag: pilReadMag($('#pil_ldd')) || 0,
   };
 }
 
 const _ptf = kN => fromSI(kN, 'force');       // kN → tonf
 const _ptm = kPa => fromSI(kPa, 'pressure');  // kPa → tonf/m²
+const _ptMom = kNm => fromSI(kNm, 'moment');  // kN·m → tonf·m
+
+/* Dibuja el diagrama de interacción P-M (φPn vs φMn) con el punto de demanda. */
+function pilDiagramaPM(diag, flexo) {
+  const pts = (diag && diag.puntos) || [];
+  if (!pts.length) return '';
+  const W = 340, H = 300, ml = 52, mr = 14, mt = 16, mb = 40;
+  const xs = pts.map(p => Math.abs(_ptMom(p.phiMn_kNm)));
+  const ys = pts.map(p => _ptf(p.phiPn_kN));
+  const muD = _ptMom(flexo.Mu_kNm), puD = _ptf(flexo.Pu_kN);
+  const xMax = Math.max(...xs, muD) * 1.15 || 1;
+  const yMin = Math.min(...ys, puD, 0), yMax = Math.max(...ys, puD) * 1.08 || 1;
+  const px = v => ml + (v / xMax) * (W - ml - mr);
+  const py = v => (H - mb) - ((v - yMin) / (yMax - yMin)) * (H - mt - mb);
+  const C = { bg: '#0d1c16', curve: '#5fa0d8', grid: '#243', txt: '#cfe3d8', dem: '#e07a3a', sub: '#8fb0a3' };
+  let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="100%" height="100%"
+    style="display:block;background:${C.bg};border-radius:10px;font-family:'Inter',system-ui,sans-serif">`;
+  // ejes
+  svg += `<line x1="${ml}" y1="${py(yMin)}" x2="${W - mr}" y2="${py(yMin)}" stroke="${C.sub}" stroke-width="1"/>`;
+  svg += `<line x1="${ml}" y1="${mt}" x2="${ml}" y2="${H - mb}" stroke="${C.sub}" stroke-width="1"/>`;
+  if (yMin < 0) svg += `<line x1="${ml}" y1="${py(0)}" x2="${W - mr}" y2="${py(0)}" stroke="${C.grid}" stroke-width="0.8" stroke-dasharray="3 3"/>`;
+  // curva
+  const path = pts.map((p, i) => `${i ? 'L' : 'M'}${px(Math.abs(_ptMom(p.phiMn_kNm))).toFixed(1)},${py(_ptf(p.phiPn_kN)).toFixed(1)}`).join(' ');
+  svg += `<path d="${path}" fill="none" stroke="${C.curve}" stroke-width="2"/>`;
+  svg += `<path d="${path}" fill="${C.curve}" fill-opacity="0.10" stroke="none"/>`;
+  // punto de demanda
+  const inside = flexo.cumple;
+  svg += `<circle cx="${px(muD).toFixed(1)}" cy="${py(puD).toFixed(1)}" r="5" fill="${inside ? '#4ade80' : '#ef4444'}" stroke="#fff" stroke-width="1"/>`;
+  svg += `<text x="${px(muD).toFixed(1) - 6}" y="${py(puD).toFixed(1) - 8}" font-size="10" fill="${inside ? '#4ade80' : '#ef4444'}" text-anchor="end">(${muD.toFixed(1)}, ${puD.toFixed(0)})</text>`;
+  // etiquetas de ejes
+  svg += `<text x="${(W) / 2}" y="${H - 8}" font-size="10" fill="${C.txt}" text-anchor="middle">φMn (tonf·m)</text>`;
+  svg += `<text x="14" y="${H / 2}" font-size="10" fill="${C.txt}" text-anchor="middle" transform="rotate(-90 14 ${H / 2})">φPn (tonf)</text>`;
+  svg += `<text x="${W / 2}" y="12" font-size="10" font-weight="700" fill="${C.txt}" text-anchor="middle">Diagrama de interacción P-M</text>`;
+  svg += `</svg>`;
+  return svg;
+}
 
 /* Muestra/oculta campos y etiquetas según la norma seleccionada. */
 function pilAplicarNorma() {
@@ -115,10 +173,129 @@ function pilRender(res) {
   $('#pil-detalle').innerHTML = `
     <div class="pil-line"><b>Diseño:</b> ${d.N_pilotes} pilote(s) de Ø${(d.D_m * 100).toFixed(0)} cm · L = ${d.L_m.toFixed(2)} m ${autoTxt ? `<span class="muted">(${autoTxt})</span>` : ''}</div>
     <div class="pil-line"><b>Acero longitudinal:</b> ${e.n_barras} Ø${e.db_long_mm} (${e.A_st_cm2.toFixed(1)} cm², ρ = ${e.cuantia_pct}%) · transversal: ${tr}</div>
-    <div class="pil-line"><b>Estructural:</b> φPn = ${_ptf(e.phiPn_kN).toFixed(1)} tonf · Pu/pilote = ${_ptf(e.Pu_pilote_kN).toFixed(1)} tonf · D/C = ${e.ratio} → ${ok(e.cumple)}</div>
+    <div class="pil-line"><b>Estructural (axial):</b> φPn = ${_ptf(e.phiPn_kN).toFixed(1)} tonf · Pu/pilote = ${_ptf(e.Pu_pilote_kN).toFixed(1)} tonf · D/C = ${e.ratio} → ${ok(e.cumple)}</div>
+    ${_pilLineasEstr(res)}
     ${geoLine}
     <div class="pil-line"><b>Volumen de concreto:</b> ${d.volumen_concreto_m3} m³ (${d.N_pilotes} pilotes)</div>
     ${avisos}`;
+
+  // Diagrama P-M en su tarjeta, si hay momento.
+  const fx = e.flexocompresion;
+  const pmCard = $('#pil-pm-card'), pmDiag = $('#pil-pm-diagram');
+  if (pmCard && pmDiag) {
+    if (fx && fx.Mu_kNm > 0.1 && e.diagrama_interaccion) {
+      pmCard.style.display = '';
+      pmDiag.innerHTML = pilDiagramaPM(e.diagrama_interaccion, fx);
+    } else {
+      pmCard.style.display = 'none';
+      pmDiag.innerHTML = '';
+    }
+  }
+  // Perfiles p-y (deflexión y momento vs profundidad).
+  const pyCard = $('#pil-py-card'), pyDiag = $('#pil-py-diagram');
+  if (pyCard && pyDiag) {
+    if (e.analisis_py && e.analisis_py.aplica) {
+      pyCard.style.display = '';
+      pyDiag.innerHTML = pilPerfilPY(e.analisis_py);
+    } else {
+      pyCard.style.display = 'none';
+      pyDiag.innerHTML = '';
+    }
+  }
+}
+
+/* Dibuja los perfiles de deflexión y(z) y momento M(z) del análisis p-y. */
+function pilPerfilPY(py) {
+  if (!py || !py.aplica) return '';
+  const z = py.z, M = py.M_kNm, y = py.y_mm;
+  const W = 360, H = 320, mt = 22, mb = 30, ml = 42, mr = 14, gap = 30;
+  const zmax = z[z.length - 1] || 1;
+  const pw = (W - ml - mr - gap) / 2;
+  const C = { bg: '#0d1c16', y: '#e07a3a', m: '#5fa0d8', txt: '#cfe3d8', sub: '#8fb0a3', zero: '#243' };
+  const pz = v => mt + (v / zmax) * (H - mt - mb);   // profundidad hacia abajo
+  function panel(x0, vals, color, title, unit) {
+    const vmax = Math.max(Math.abs(Math.min(...vals)), Math.abs(Math.max(...vals))) || 1;
+    const cx = x0 + pw / 2;
+    const px = v => cx + (v / vmax) * (pw / 2 - 4);
+    let s = `<text x="${cx}" y="14" font-size="10" font-weight="700" fill="${color}" text-anchor="middle">${title}</text>`;
+    s += `<line x1="${cx}" y1="${mt}" x2="${cx}" y2="${H - mb}" stroke="${C.zero}" stroke-width="0.8" stroke-dasharray="3 3"/>`;
+    s += `<line x1="${x0}" y1="${mt}" x2="${x0}" y2="${H - mb}" stroke="${C.sub}" stroke-width="0.8"/>`;
+    const path = vals.map((v, i) => `${i ? 'L' : 'M'}${px(v).toFixed(1)},${pz(z[i]).toFixed(1)}`).join(' ');
+    s += `<path d="${path}" fill="none" stroke="${color}" stroke-width="1.8"/>`;
+    // valor extremo
+    let iex = 0; vals.forEach((v, i) => { if (Math.abs(v) > Math.abs(vals[iex])) iex = i; });
+    s += `<circle cx="${px(vals[iex]).toFixed(1)}" cy="${pz(z[iex]).toFixed(1)}" r="3.5" fill="${color}"/>`;
+    s += `<text x="${cx}" y="${H - 8}" font-size="9" fill="${C.txt}" text-anchor="middle">${unit}</text>`;
+    return s;
+  }
+  let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="100%" height="100%" style="display:block;background:${C.bg};border-radius:10px;font-family:'Inter',system-ui,sans-serif">`;
+  // eje de profundidad (compartido, a la izquierda)
+  svg += `<text x="12" y="${H / 2}" font-size="10" fill="${C.sub}" text-anchor="middle" transform="rotate(-90 12 ${H / 2})">profundidad z (m)</text>`;
+  [0, Math.round(zmax / 2), Math.round(zmax)].forEach(zz => {
+    svg += `<text x="${ml - 4}" y="${pz(zz) + 3}" font-size="8" fill="${C.sub}" text-anchor="end">${zz}</text>`;
+  });
+  svg += panel(ml, y, C.y, 'Deflexión y', 'mm');
+  svg += panel(ml + pw + gap, M, C.m, 'Momento M', 'tonf·m (rel.)');
+  svg += `</svg>`;
+  return svg;
+}
+
+/* Líneas de flexo-compresión, esbeltez, tracción y confinamiento sísmico. */
+function _pilLineasEstr(res) {
+  const e = res.estructural;
+  const ok = (b) => b ? '<span style="color:var(--green-300)">cumple</span>'
+                      : '<span style="color:var(--status-err-tx)">no cumple</span>';
+  let out = '';
+  // Grupo (distribución de la columna a los pilotes)
+  const gr = e.grupo;
+  if (gr && gr.n > 1 && (Math.abs(gr.P_max_kN - gr.P_min_kN) > 1)) {
+    const trac = gr.hay_traccion ? ` · <span style="color:var(--status-err-tx)">TRACCIÓN P<sub>mín</sub>=${_ptf(gr.P_min_kN).toFixed(1)} tonf</span>` : ` · P<sub>mín</sub>=${_ptf(gr.P_min_kN).toFixed(1)} tonf`;
+    out += `<div class="pil-line"><b>Grupo (cabezal rígido):</b> ${gr.n} pilotes · P<sub>máx</sub>=${_ptf(gr.P_max_kN).toFixed(1)} tonf${trac}</div>`;
+  }
+  // Carga lateral — p-y no lineal si aplica, si no la estimación de Broms.
+  const py = e.analisis_py, lat = e.carga_lateral;
+  if (py && py.aplica) {
+    out += `<div class="pil-line"><b>Análisis lateral p-y (no lineal, ${py.tipo}):</b> M<sub>máx</sub>=${_ptMom(py.Mmax_kNm).toFixed(1)} tonf·m a ${py.z_Mmax_m} m · deflexión cabeza = ${py.y0_mm} mm · V<sub>máx</sub>=${_ptf(py.Vmax_kN).toFixed(1)} tonf</div>`;
+  } else if (lat && lat.aplica) {
+    out += `<div class="pil-line"><b>Carga lateral (${lat.etiqueta}):</b> H=${_ptf(lat.H_kN).toFixed(1)} tonf → M<sub>máx</sub>=${_ptMom(lat.Mmax_kNm).toFixed(1)} tonf·m · deflexión cabeza = ${lat.y0_mm} mm (cabeza ${lat.cabeza})</div>`;
+  }
+  const fx = e.flexocompresion, esb = e.esbeltez;
+  if (fx && fx.Mu_kNm > 0.1) {
+    const mc = esb && esb.es_esbelto ? ` (M amplificado a ${_ptMom(esb.Mc_kNm).toFixed(1)} tonf·m por δ<sub>ns</sub>=${esb.delta_ns})` : '';
+    out += `<div class="pil-line"><b>Flexo-compresión (P-M):</b> Mu = ${_ptMom(fx.Mu_kNm).toFixed(1)} tonf·m${mc} · φMn disp. = ${_ptMom(fx.phiMn_disponible_kNm).toFixed(1)} tonf·m · relación = ${fx.ratio_interaccion} → ${ok(fx.cumple)}</div>`;
+  }
+  if (esb) {
+    out += esb.es_esbelto
+      ? `<div class="pil-line"><b>Esbeltez:</b> kL<sub>u</sub>/r = ${esb.esbeltez_klu_r} > ${esb.limite} → esbelto · P<sub>c</sub> = ${_ptf(esb.Pc_kN || 0).toFixed(1)} tonf · δ<sub>ns</sub> = ${esb.delta_ns}${esb.inestable ? ' <span style="color:var(--status-err-tx)">(inestable)</span>' : ''}</div>`
+      : `<div class="pil-line"><b>Esbeltez:</b> kL<sub>u</sub>/r = ${esb.esbeltez_klu_r} ≤ ${esb.limite} → columna corta (sin amplificación)</div>`;
+  }
+  const tr = e.traccion;
+  if (tr && tr.aplica) {
+    out += `<div class="pil-line"><b>Tracción / arranque:</b> φTn = ${_ptf(tr.phiTn_kN).toFixed(1)} tonf · Tu = ${_ptf(tr.Tu_kN).toFixed(1)} tonf · D/C = ${tr.ratio} → ${ok(tr.cumple)}</div>`;
+  }
+  const cv = e.cortante;
+  if (cv && cv.Vu_kN > 0.1) {
+    out += `<div class="pil-line"><b>Cortante del pilote:</b> Vu = ${_ptf(cv.Vu_kN).toFixed(1)} tonf · φVc = ${_ptf(cv.phiVc_kN).toFixed(1)} · φVn = ${_ptf(cv.phiVn_kN).toFixed(1)} tonf → ${ok(cv.cumple)}${cv.requiere_refuerzo ? ' <span class="muted">(el transversal aporta cortante)</span>' : ''}</div>`;
+  }
+  const dav = e.pandeo_davisson;
+  if (dav && dav.aplica) {
+    out += `<div class="pil-line"><b>Pandeo (Davisson):</b> z<sub>fij</sub>=${dav.z_fijacion_m} m · L<sub>e</sub>=${dav.Le_m} m · P<sub>cr</sub>=${_ptf(dav.Pcr_kN).toFixed(1)} tonf · P<sub>adm</sub>=${_ptf(dav.Padm_kN).toFixed(1)} tonf → ${ok(dav.cumple)}</div>`;
+  }
+  const dd = e.downdrag;
+  if (dd && dd.aplica) {
+    out += `<div class="pil-line"><b>Fricción negativa (downdrag):</b> Q<sub>n</sub>=${_ptf(dd.Qn_kN).toFixed(1)} tonf se suma a la axial · plano neutro a ${dd.plano_neutro_m} m</div>`;
+  }
+  if (py && py.aplica && py.z_refuerzo_m) {
+    out += `<div class="pil-line"><b>Refuerzo longitudinal:</b> necesario hasta ≈ ${py.z_refuerzo_m} m de profundidad (donde M(z) decae al 10% del máximo)</div>`;
+  }
+  const cf = e.confinamiento_sismico;
+  if (cf) {
+    const paso = cf.tipo === 'espiral'
+      ? `espiral ρ<sub>s</sub>=${cf.rho_s_confinamiento}, paso ≤ ${(cf.paso_confinado_m * 100).toFixed(0)} cm`
+      : `estribos sep ≤ ${(cf.sep_confinada_m * 100).toFixed(0)} cm`;
+    out += `<div class="pil-line"><b>Confinamiento sísmico (${cf.disipacion}):</b> zona de rótula L<sub>o</sub> = ${cf.longitud_confinamiento_m} m · ${paso}</div>`;
+  }
+  return out;
 }
 
 /* ---------- Esquema 2D: elevación + sección ---------- */

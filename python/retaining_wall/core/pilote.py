@@ -282,7 +282,17 @@ def disenar_pilote_estructural(*, P_servicio, factor_carga=1.5, Pu=0.0,
                                recubrimiento=0.075,
                                D=0.0, N=0, L_max=25.0, L_min=3.0,
                                N_min=1, N_max=80,
-                               norma="NSR10", tipo_suelo="arena") -> dict:
+                               norma="NSR10", tipo_suelo="arena",
+                               M_servicio=0.0, Mu=0.0,
+                               T_servicio=0.0, Tu=0.0,
+                               Lu_libre=0.0, k_pandeo=1.0,
+                               disipacion="DMO",
+                               Mx_servicio=0.0, My_servicio=0.0, H_servicio=0.0,
+                               s_grupo=0.0, tipo_reaccion="nh",
+                               nh_suelo=0.0, k_suelo=0.0,
+                               cabeza_pilote="libre",
+                               gamma_lat=0.0, cu_lat=0.0, eps50=0.01, phi_lat=0.0,
+                               fs_negativa=0.0, L_downdrag=0.0) -> dict:
     """Diseña pilotes a partir de la carga y de los parámetros geotécnicos.
 
     Datos de entrada (geotecnia del estudio de suelos):
@@ -335,6 +345,77 @@ def disenar_pilote_estructural(*, P_servicio, factor_carga=1.5, Pu=0.0,
             return L_min if cap_tip >= dem else None
         return max((dem - cap_tip) / cap_skin_unit, L_min)
 
+    # Momentos y cargas por pilote (para flexo-compresión / esbeltez).
+    from .pilote_flexocompresion import (
+        amplificacion_momento, capacidad_traccion, carga_lateral,
+        confinamiento_sismico, cortante_circular, diagrama_interaccion,
+        distribucion_grupo, layout_grupo, verificar_flexocompresion)
+    # Momento y tracción DIRECTOS por pilote (aplicados en la cabeza).
+    Mu_pila_dir = Mu if (Mu and Mu > 0) else factor_carga * abs(M_servicio)
+    Tu_pila_dir = Tu if (Tu and Tu > 0) else factor_carga * abs(T_servicio)
+    # Cargas mayoradas del grupo (columna sobre el cabezal).
+    Mux_u = factor_carga * abs(Mx_servicio)
+    Muy_u = factor_carga * abs(My_servicio)
+    Hu_total = factor_carga * abs(H_servicio)
+
+    _tipo_py = "arcilla" if (tipo_reaccion == "k" or cu_lat > 0) else "arena"
+    _hay_datos_py = (gamma_lat > 0 and ((_tipo_py == "arcilla" and cu_lat > 0)
+                     or (_tipo_py == "arena" and (nh_suelo > 0 or phi_lat > 0))))
+    Qn_downdrag = 0.0
+
+    def _cargas_diseno(Dd_, n_):
+        """Combina la carga axial uniforme, la distribución biaxial del grupo, la
+        carga lateral (p-y no lineal, o Broms) y el downdrag en (Pu, Mu, Tu, V)."""
+        s_ = s_grupo if (s_grupo and s_grupo > 0) else 3.0 * Dd_
+        coords = layout_grupo(n_, s_)
+        dist = distribucion_grupo(P=Pu_total, Mx=Mux_u, My=Muy_u, coords=coords)
+        Pu_ax = Pu_total / n_
+        Pu_des = max(Pu_ax, dist["P_max_kN"])
+        # Downdrag: se suma a la carga axial.
+        Qn = 0.0
+        if fs_negativa > 1e-9 and L_downdrag > 1e-9:
+            Qn = fs_negativa * math.pi * Dd_ * L_downdrag
+            Pu_des += factor_carga * Qn
+        Hu_p = Hu_total / n_
+        lat = carga_lateral(H=Hu_p, D=Dd_, fc=fc, recubrimiento=recubrimiento,
+                            tipo=tipo_reaccion, nh=nh_suelo, k=k_suelo,
+                            cabeza=cabeza_pilote)
+        Mu_lat = lat["Mmax_kNm"]
+        # Momento del análisis p-y no lineal (si hay datos de suelo).
+        if Hu_p > 1e-9 and _hay_datos_py:
+            try:
+                from .pilote_py import analisis_py as _apy
+                Ec_ = 4700.0 * math.sqrt(fc) * 1000.0
+                EI_ = 0.5 * Ec_ * math.pi * Dd_ ** 4 / 64.0
+                pyr = _apy(EI=EI_, L=min(L_max, 20.0), D=Dd_, H=Hu_p,
+                           M0=Mu_pila_dir, cabeza=cabeza_pilote, tipo=_tipo_py,
+                           gamma=gamma_lat, cu=cu_lat if cu_lat > 0 else 50.0,
+                           eps50=eps50, phi=phi_lat if phi_lat > 0 else 32.0,
+                           nh=nh_suelo if nh_suelo > 0 else 5000.0, n_nodos=40)
+                if pyr.get("aplica"):
+                    Mu_lat = max(Mu_lat, pyr["Mmax_kNm"])
+            except Exception:
+                pass
+        Mu_des = max(Mu_pila_dir, Mu_lat)
+        Tu_des = max(Tu_pila_dir, max(0.0, -dist["P_min_kN"]))
+        return {"Pu": Pu_des, "Mu": Mu_des, "Tu": Tu_des, "V": Hu_p,
+                "dist": dist, "lat": lat, "s": s_}
+
+    def _flexo_ok(Dd_, n_, Ag_):
+        """¿El punto (Pu, Mc) cae dentro del diagrama P-M para este D?"""
+        if ab <= 0:
+            return True
+        cd = _cargas_diseno(Dd_, n_)
+        if cd["Mu"] <= 1e-9:
+            return True
+        nb = max(4, math.ceil((rho * Ag_) / ab))
+        diag = diagrama_interaccion(
+            D=Dd_, fc=fc, fy=fy, n_barras=nb, db_long=db_long * 1000.0,
+            recubrimiento=recubrimiento, db_trans=db_trans * 1000.0, espiral=espiral)
+        esb = amplificacion_momento(Pu=cd["Pu"], M2=cd["Mu"], D=Dd_, fc=fc,
+                                    Lu=Lu_libre, k=k_pandeo, fy=fy)
+        return verificar_flexocompresion(diag, cd["Pu"], esb["Mc_kNm"])["cumple"]
+
     candidatos = [float(D)] if (D and D > 0) else DIAMETROS_STD
     elegido = None
     for Dd in candidatos:
@@ -352,7 +433,9 @@ def disenar_pilote_estructural(*, P_servicio, factor_carga=1.5, Pu=0.0,
             while (L is None or L > L_max) and n < N_max:
                 n += 1
                 L = _L_geotec(Dd, n)
-        if L is not None and L <= L_max and phiPn >= Pu_total / n - 1e-6:
+        # Acepta el D si cumple axial, geotecnia y flexo-compresión (si hay momento).
+        if (L is not None and L <= L_max and phiPn >= Pu_total / n - 1e-6
+                and _flexo_ok(Dd, n, Ag)):
             elegido = (Dd, n, L, Ag, Ast, phiPn)
             break
 
@@ -412,6 +495,106 @@ def disenar_pilote_estructural(*, P_servicio, factor_carga=1.5, Pu=0.0,
     if not cumple_estr:
         avisos.append("Capacidad estructural por pilote insuficiente: aumenta D o la cuantía.")
 
+    # ── Grupo + carga lateral + flexo-compresión + esbeltez + tracción + cortante ──
+    cd = _cargas_diseno(Dd, n)
+    Pu_des, Mu_des, Tu_des, V_pila = cd["Pu"], cd["Mu"], cd["Tu"], cd["V"]
+    grupo = cd["dist"]
+    lateral = cd["lat"]
+
+    # Rigidez a flexión (para p-y, Davisson).
+    Ec_kPa = 4700.0 * math.sqrt(fc) * 1000.0
+    Ig = math.pi * Dd ** 4 / 64.0
+    EI = 0.5 * Ec_kPa * Ig
+
+    # Análisis lateral no lineal por curvas p-y (si hay H y datos de suelo).
+    from .pilote_py import analisis_py
+    from .pilote_flexocompresion import friccion_negativa, pandeo_davisson
+    py = {"aplica": False}
+    _tipo_py = "arcilla" if (tipo_reaccion == "k" or cu_lat > 0) else "arena"
+    _hay_datos_py = (gamma_lat > 0 and ((_tipo_py == "arcilla" and cu_lat > 0)
+                     or (_tipo_py == "arena" and (nh_suelo > 0 or phi_lat > 0))))
+    if Hu_total > 1e-9 and _hay_datos_py:
+        try:
+            py = analisis_py(
+                EI=EI, L=L, D=Dd, H=Hu_total / n, M0=Mu_pila_dir,
+                cabeza=cabeza_pilote, tipo=_tipo_py, gamma=gamma_lat,
+                cu=cu_lat if cu_lat > 0 else 50.0, eps50=eps50,
+                phi=phi_lat if phi_lat > 0 else 32.0,
+                nh=nh_suelo if nh_suelo > 0 else 5000.0)
+            if py.get("aplica"):
+                # el momento del análisis no lineal reemplaza el estimado de Broms
+                Mu_des = max(Mu_pila_dir, py["Mmax_kNm"])
+        except Exception:
+            py = {"aplica": False}
+
+    # Fricción negativa (downdrag): ya está incluida en Pu_des por _cargas_diseno.
+    downdrag = friccion_negativa(D=Dd, fs_neg=fs_negativa, L_downdrag=L_downdrag,
+                                 P_servicio=Pu_pile)
+
+    # Pandeo del pilote parcialmente embebido (Davisson).
+    davisson = pandeo_davisson(
+        Pu=Pu_des, EI=EI, Lu=Lu_libre, tipo=tipo_reaccion,
+        nh=nh_suelo, k=k_suelo, beta=max(1.0, k_pandeo))
+
+    diagrama = diagrama_interaccion(
+        D=Dd, fc=fc, fy=fy, n_barras=n_barras,
+        db_long=db_long * 1000.0, recubrimiento=recubrimiento,
+        db_trans=db_trans * 1000.0, espiral=espiral)
+
+    # Esbeltez: amplifica el momento de diseño antes de verificar el diagrama.
+    esbeltez = amplificacion_momento(
+        Pu=Pu_des, M2=Mu_des, D=Dd, fc=fc, Lu=Lu_libre, k=k_pandeo, fy=fy)
+    Mc_pila = esbeltez["Mc_kNm"]
+    flexocomp = verificar_flexocompresion(diagrama, Pu_des, Mc_pila)
+    traccion = capacidad_traccion(Ast=Ast_real, fy=fy, Tu=Tu_des)
+    # Cortante del pilote (usa el paso del refuerzo transversal como cortante).
+    s_trans = (transversal.get("paso_m", 0.0) if espiral
+               else transversal.get("sep_max_m", 0.0))
+    cortante = cortante_circular(
+        Vu=V_pila, D=Dd, fc=fc, fy=fy, db_trans=db_trans * 1000.0,
+        recubrimiento=recubrimiento, espiral=espiral, s_trans=s_trans)
+    confinamiento = confinamiento_sismico(
+        D=Dd, fc=fc, fy=fy, db_long=db_long * 1000.0,
+        recubrimiento=recubrimiento, db_trans=db_trans * 1000.0,
+        espiral=espiral, Lu=Lu_libre, disipacion=disipacion)
+
+    if Mu_des > 0 and not flexocomp["cumple"]:
+        avisos.append("El punto (Pu, Mu) cae fuera del diagrama de interacción "
+                      "P-M: aumenta D, la cuantía o reduce el momento.")
+    if esbeltez.get("inestable"):
+        avisos.append("Pilote inestable por esbeltez (Pu > 0.75·Pc): reduce la "
+                      "longitud libre Lu, aumenta D o arriostra el pilote.")
+    elif esbeltez["es_esbelto"]:
+        avisos.append(f"Pilote esbelto (kLu/r = {esbeltez['esbeltez_klu_r']} > "
+                      f"{esbeltez['limite']:.0f}): momento amplificado por δ_ns = "
+                      f"{esbeltez['delta_ns']}.")
+    if grupo.get("hay_traccion"):
+        avisos.append(f"El momento del grupo genera TRACCIÓN en pilotes de borde "
+                      f"(P_mín = {grupo['P_min_kN']:.0f} kN): verifica el arranque "
+                      "y la conexión al cabezal.")
+    if traccion["aplica"] and not traccion["cumple"]:
+        avisos.append("La capacidad estructural a tracción (arranque) es "
+                      "insuficiente: aumenta el acero longitudinal.")
+    if not cortante["cumple"]:
+        avisos.append("El cortante del pilote excede φVn: aumenta D o cierra el "
+                      "paso del refuerzo transversal.")
+    if davisson.get("aplica") and not davisson["cumple"]:
+        avisos.append(f"Pandeo (Davisson): Pu = {Pu_des:.0f} kN > Padm = "
+                      f"{davisson['Padm_kN']:.0f} kN (Pcr = {davisson['Pcr_kN']:.0f} "
+                      "kN): aumenta D o reduce la longitud libre.")
+    if downdrag.get("aplica"):
+        avisos.append(f"Fricción negativa (downdrag): Qn = {downdrag['Qn_kN']:.0f} "
+                      "kN se suma a la carga axial del pilote (plano neutro a "
+                      f"{downdrag['plano_neutro_m']:.1f} m).")
+    if py.get("aplica"):
+        avisos.append(f"Análisis p-y no lineal: Mmax = {py['Mmax_kNm']:.0f} kN·m a "
+                      f"{py['z_Mmax_m']:.1f} m; refuerzo longitudinal recomendado "
+                      f"hasta ≈ {py['z_refuerzo_m']:.1f} m de profundidad.")
+    cumple_flexocomp = flexocomp["cumple"] if Mu_des > 0 else True
+    cumple_traccion = traccion["cumple"] if traccion["aplica"] else True
+    cumple_cortante = cortante["cumple"]
+    cumple_pandeo = davisson["cumple"] if davisson.get("aplica") else True
+
     geotecnia = {
         "norma": norma, "tipo_suelo": _ts,
         "f_s_kPa": round(f_s, 1), "q_p_kPa": round(q_p, 1),
@@ -449,10 +632,32 @@ def disenar_pilote_estructural(*, P_servicio, factor_carga=1.5, Pu=0.0,
             "phiPn_kN": round(phiPn, 1), "Pu_pilote_kN": round(Pu_pile, 1),
             "ratio": round(Pu_pile / phiPn, 3) if phiPn > 0 else None,
             "transversal": transversal, "cumple": cumple_estr,
+            "grupo": grupo,
+            "carga_lateral": lateral,
+            "analisis_py": py,
+            "pandeo_davisson": davisson,
+            "downdrag": downdrag,
+            "flexocompresion": flexocomp,
+            "diagrama_interaccion": diagrama,
+            "esbeltez": esbeltez,
+            "traccion": traccion,
+            "cortante": cortante,
+            "confinamiento_sismico": confinamiento,
+            "cumple_flexocompresion": cumple_flexocomp,
+            "cumple_traccion": cumple_traccion,
+            "cumple_cortante": cumple_cortante,
+            "cumple_pandeo": cumple_pandeo,
         },
         "geotecnia": geotecnia,
         "cargas": {"P_servicio_kN": round(P_servicio, 1), "Pu_kN": round(Pu_total, 1),
-                   "factor_carga": factor_carga},
-        "cumple": cumple_estr and cumple_geo,
+                   "factor_carga": factor_carga,
+                   "Mu_pilote_kNm": round(Mu_des, 1),
+                   "Tu_pilote_kN": round(Tu_des, 1),
+                   "V_pilote_kN": round(V_pila, 1),
+                   "Lu_libre_m": round(Lu_libre, 2),
+                   "Mx_grupo_kNm": round(Mux_u, 1), "My_grupo_kNm": round(Muy_u, 1),
+                   "H_grupo_kN": round(Hu_total, 1)},
+        "cumple": (cumple_estr and cumple_geo and cumple_flexocomp
+                   and cumple_traccion and cumple_cortante and cumple_pandeo),
         "avisos": avisos,
     }

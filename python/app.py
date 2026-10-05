@@ -1411,6 +1411,18 @@ def construir_pilote_diseno_desde_datos(d: dict) -> dict:
         D=_f(d.get("D")), N=int(_f(d.get("N"))), L_max=_f(d.get("L_max"), 25.0),
         norma=str(d.get("norma", "NSR10") or "NSR10"),
         tipo_suelo=str(d.get("tipo_suelo", "arena") or "arena"),
+        M_servicio=_f(d.get("M_servicio")), Mu=_f(d.get("Mu")),
+        T_servicio=_f(d.get("T_servicio")), Tu=_f(d.get("Tu")),
+        Lu_libre=_f(d.get("Lu_libre")), k_pandeo=_f(d.get("k_pandeo"), 1.0),
+        disipacion=str(d.get("disipacion", "DMO") or "DMO"),
+        Mx_servicio=_f(d.get("Mx_servicio")), My_servicio=_f(d.get("My_servicio")),
+        H_servicio=_f(d.get("H_servicio")), s_grupo=_f(d.get("s_grupo")),
+        tipo_reaccion=str(d.get("tipo_reaccion", "nh") or "nh"),
+        nh_suelo=_f(d.get("nh_suelo")), k_suelo=_f(d.get("k_suelo")),
+        cabeza_pilote=str(d.get("cabeza_pilote", "libre") or "libre"),
+        gamma_lat=_f(d.get("gamma_lat")), cu_lat=_f(d.get("cu_lat")),
+        eps50=_f(d.get("eps50"), 0.01), phi_lat=_f(d.get("phi_lat")),
+        fs_negativa=_f(d.get("fs_negativa")), L_downdrag=_f(d.get("L_downdrag")),
     )
 
 
@@ -1511,7 +1523,8 @@ def construir_placa_desde_datos(d: dict) -> dict:
         columnas = malla_columnas(
             nx=int(_f(d.get("nx"), 2)), ny=int(_f(d.get("ny"), 2)),
             sx=_f(d.get("sx"), 5.0), sy=_f(d.get("sy"), 5.0),
-            P=_f(d.get("P")), c1=c1, c2=c2, factor_carga=factor)
+            P=_f(d.get("P")), c1=c1, c2=c2, factor_carga=factor,
+            Mx=_f(d.get("Mcol")), My=_f(d.get("Mcol_y")))
     return disenar_placa(
         columnas=columnas, q_adm=_f(d.get("q_adm"), 200.0),
         B=_f(d.get("B")), L=_f(d.get("L")), h=_f(d.get("h")),
@@ -1519,7 +1532,8 @@ def construir_placa_desde_datos(d: dict) -> dict:
         recubrimiento=_f(d.get("recubrimiento"), 0.075), db=_f(d.get("db"), 0.01905),
         Df=_f(d.get("Df"), 1.5), gamma_suelo=_f(d.get("gamma_suelo"), 18.0),
         gamma_concreto=_f(d.get("gamma_concreto"), 24.0),
-        factor_carga=factor, voladizo=_f(d.get("voladizo"), 0.5))
+        factor_carga=factor, voladizo=_f(d.get("voladizo"), 0.5),
+        fc_columna=_f(d.get("fc_columna")), db_dowel=_f(d.get("db_dowel")))
 
 
 @app.route("/api/placa", methods=["POST"])
@@ -1901,6 +1915,7 @@ def construir_dado_desde_datos(d: dict) -> dict:
         posicion=str(d.get("posicion", "interior") or "interior"),
         metodo=str(d.get("metodo", "ambos") or "ambos"),
         norma=str(d.get("norma", "NSR10") or "NSR10"),
+        fc_columna=_f(d.get("fc_columna")),
     )
 
 

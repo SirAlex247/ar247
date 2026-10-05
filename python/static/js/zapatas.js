@@ -38,6 +38,8 @@ function zapRecolectar() {
     fc: zReadMag($('#zap_fc')), fy: zReadMag($('#zap_fy')),
     db: (numv('zap_db', 19.05)) / 1000.0,   // mm → m
     recubrimiento: zReadMag($('#zap_rec')),
+    fc_columna: zReadMag($('#zap_fccol')) || 0,           // f'c columna (aplastamiento)
+    db_dowel: (numv('zap_dbdow', 0) || 0) / 1000.0,       // mm → m (0 = usa db)
     B: zReadMag($('#zap_B')) || 0,
     L: zReadMag($('#zap_L')) || 0,
     h: zReadMag($('#zap_h')) || 0,
@@ -45,6 +47,7 @@ function zapRecolectar() {
     // Combinada
     c1a: zReadMag($('#zap_c1')), c2a: zReadMag($('#zap_c2')),
     P1_servicio: zReadMag($('#zap_P')) || 0,
+    M1_servicio: zReadMag($('#zap_M')) || 0,   // momento de la columna 1 (para punz. γv)
     c1b: zReadMag($('#zap_c1b')), c2b: zReadMag($('#zap_c2b')),
     P2_servicio: zReadMag($('#zap_P2')) || 0,
     separacion: zReadMag($('#zap_sep')) || 0,
@@ -143,8 +146,12 @@ function zapRenderCombinada(res) {
     <div class="pil-line"><b>Viga:</b> M⁺=${_ztm(e.M_pos_kNm).toFixed(1)} (x=${e.x_M_pos_m} m, acero inferior) ·
       M⁻=${_ztm(e.M_neg_kNm).toFixed(1)} tonf·m (x=${e.x_M_neg_m} m, acero superior) ·
       V<sub>máx</sub>=${_ztf(e.V_max_kN).toFixed(1)} tonf → ${_zok(e.cumple_v_long)}</div>
-    <div class="pil-line"><b>Punzonamiento:</b> col.1 D/C=${e.punzonamiento_col1.ratio} ${_zok(e.punzonamiento_col1.cumple)} ·
-      col.2 D/C=${e.punzonamiento_col2.ratio} ${_zok(e.punzonamiento_col2.cumple)}</div>
+    <div class="pil-line"><b>Punzonamiento${(e.punzonamiento_col1.vu_momento_kPa > 0.1 || e.punzonamiento_col2.vu_momento_kPa > 0.1) ? ' (con momento γv)' : ''}:</b>
+      col.1 D/C=${e.punzonamiento_col1.ratio_momento ?? e.punzonamiento_col1.ratio} ${_zok(e.punzonamiento_col1.cumple_momento ?? e.punzonamiento_col1.cumple)} ·
+      col.2 D/C=${e.punzonamiento_col2.ratio_momento ?? e.punzonamiento_col2.ratio} ${_zok(e.punzonamiento_col2.cumple_momento ?? e.punzonamiento_col2.cumple)}</div>
+    ${e.transferencia_col1 ? `<div class="pil-line"><b>Transferencia (C.15.8):</b>
+      col.1 aplast. D/C=${e.transferencia_col1.ratio} ${_zok(e.transferencia_col1.cumple_aplastamiento)}, dowels ${e.transferencia_col1.n_dowels} Ø${e.transferencia_col1.db_dowel_mm} ${_zok(e.transferencia_col1.cumple_dowels)} ·
+      col.2 aplast. D/C=${e.transferencia_col2.ratio} ${_zok(e.transferencia_col2.cumple_aplastamiento)}, dowels ${e.transferencia_col2.n_dowels} Ø${e.transferencia_col2.db_dowel_mm} ${_zok(e.transferencia_col2.cumple_dowels)}</div>` : ''}
     <table class="pil-table" style="margin-top:8px">
       <thead><tr><th>Refuerzo</th><th style="text-align:right">Mu (tonf·m)</th><th style="text-align:right">As (cm²)</th><th style="text-align:right">Barras</th></tr></thead>
       <tbody>
@@ -170,8 +177,9 @@ function zapRenderTriangular(res) {
     <div class="pil-line"><b>Geotecnia:</b> P total ${_ztf(geo.P_total_servicio_kN).toFixed(1)} tonf ·
       q<sub>unif</sub> ${_ztp(geo.q_uniforme_kPa).toFixed(1)} / q<sub>adm</sub> ${_ztp(geo.q_adm_kPa).toFixed(1)} tonf/m²
       → ${_zok(geo.cumple)} (D/C=${geo.ratio})</div>
-    <div class="pil-line"><b>Punzonamiento:</b> D/C=${e.punzonamiento.ratio} ${_zok(e.punzonamiento.cumple)} ·
+    <div class="pil-line"><b>Punzonamiento${e.punzonamiento.vu_momento_kPa > 0.1 ? ' (con momento γv)' : ''}:</b> D/C=${e.punzonamiento.ratio_momento ?? e.punzonamiento.ratio} ${_zok(e.punzonamiento.cumple_momento ?? e.punzonamiento.cumple)} ·
       <b>Cortante 1 vía:</b> D/C=${e.una_via.ratio} ${_zok(e.una_via.cumple)}</div>
+    ${e.transferencia ? `<div class="pil-line"><b>Transferencia (C.15.8):</b> aplast. Pu/φPn D/C=${e.transferencia.ratio} ${_zok(e.transferencia.cumple_aplastamiento)} · dowels ${e.transferencia.n_dowels} Ø${e.transferencia.db_dowel_mm} ${_zok(e.transferencia.cumple_dowels)}</div>` : ''}
     <table class="pil-table" style="margin-top:8px">
       <thead><tr><th>Flexión (aprox. eq.)</th><th style="text-align:right">Mu</th><th style="text-align:right">As (cm²)</th><th style="text-align:right">Barras</th></tr></thead>
       <tbody>${_zfila(e.flexion, 'Ambas direcciones')}</tbody>
@@ -180,10 +188,13 @@ function zapRenderTriangular(res) {
 }
 
 function _zfila(f, dir) {
+  const dv = f.desarrollo || {};
+  const ldFlag = (dv.ld_m != null && !dv.cumple) ? ' <span style="color:var(--status-err-tx)">✗ℓd</span>' : '';
+  const rhoFlag = (f.cuantia && !f.cuantia.cumple) ? ' <span style="color:var(--status-err-tx)">✗ρ</span>' : '';
   return `<tr><td>${dir}</td>
     <td style="text-align:right">${_ztm(f.Mu_kNm).toFixed(2)}</td>
     <td style="text-align:right">${f.As_cm2}${f.gobierna_minimo ? ' <span class="muted">(mín)</span>' : ''}</td>
-    <td style="text-align:right">${f.n_barras} Ø${f.db_mm} @ ${f.sep_cm} cm</td></tr>`;
+    <td style="text-align:right">${f.n_barras} Ø${f.db_mm} @ ${f.sep_cm} cm${ldFlag}${rhoFlag}</td></tr>`;
 }
 
 function zapRenderAislada(res) {
@@ -199,11 +210,41 @@ function zapRenderAislada(res) {
 
   const ok = (b) => b ? '<span style="color:var(--green-300)">cumple</span>'
                       : '<span style="color:var(--status-err-tx)">no cumple</span>';
-  const fila = (f, dir) => `
+  const fila = (f, dir) => {
+    const dv = f.desarrollo || {};
+    const ldTxt = (dv.ld_m != null)
+      ? `<td style="text-align:right">${dv.ld_m} / ${dv.ld_disponible_m} ${dv.cumple ? '' : '<span style="color:var(--status-err-tx)">✗ gancho</span>'}</td>`
+      : '<td>—</td>';
+    let bandaTxt = '';
+    if (f.banda_central) {
+      const b = f.banda_central;
+      bandaTxt = `<tr><td colspan="5" class="muted" style="font-size:11px;padding-left:12px">↳ banda central (γ<sub>s</sub>=${b.gamma_s}, ancho ${b.ancho_banda_m} m): ${b.n_banda} barras dentro + ${b.n_fuera} fuera</td></tr>`;
+    }
+    return `
     <tr><td>${dir}</td>
         <td style="text-align:right">${_ztm(f.Mu_kNm).toFixed(2)}</td>
         <td style="text-align:right">${f.As_cm2}${f.gobierna_minimo ? ' <span class="muted">(mín)</span>' : ''}</td>
-        <td style="text-align:right">${f.n_barras} Ø${f.db_mm} @ ${f.sep_cm} cm</td></tr>`;
+        <td style="text-align:right">${f.n_barras} Ø${f.db_mm} @ ${f.sep_cm} cm</td>
+        ${ldTxt}</tr>${bandaTxt}`;
+  };
+
+  const p = e.punzonamiento, t = e.transferencia;
+  // Punzonamiento: con momento (cortante excéntrico) si aplica.
+  let punzLine;
+  if (p.vu_momento_kPa && p.vu_momento_kPa > 0.1) {
+    punzLine = `<div class="pil-line"><b>Punzonamiento (2 vías) con momento:</b>
+      v<sub>u</sub> directo ${_ztp(p.vu_directo_kPa).toFixed(1)} + excéntrico ${_ztp(p.vu_momento_kPa).toFixed(1)} = <b>${_ztp(p.vu_total_kPa).toFixed(1)}</b> vs φv<sub>c</sub> ${_ztp(p.phi_vc_kPa).toFixed(1)} tonf/m²
+      (γ<sub>v</sub>=${p.gamma_v_x}) → ${ok(p.cumple_momento)} (D/C=${p.ratio_momento})</div>`;
+  } else {
+    punzLine = `<div class="pil-line"><b>Punzonamiento (2 vías):</b> V<sub>u</sub>=${_ztf(p.Vu_kN).toFixed(1)} φV<sub>c</sub>=${_ztf(p.phiVc_kN).toFixed(1)} tonf (v<sub>c</sub>=${p.vc_MPa} MPa) → ${ok(p.cumple)} (D/C=${p.ratio})</div>`;
+  }
+  // Transferencia de carga (aplastamiento + dowels).
+  let transfLine = '';
+  if (t) {
+    transfLine = `<div class="pil-line"><b>Transferencia columna→zapata (C.15.8):</b>
+      aplastamiento P<sub>u</sub>=${_ztf(t.Pu_kN).toFixed(1)} / φP<sub>n</sub>=${_ztf(t.phiPn_kN).toFixed(1)} tonf → ${ok(t.cumple_aplastamiento)} (D/C=${t.ratio}) ·
+      <b>dowels:</b> ${t.n_dowels} Ø${t.db_dowel_mm} (A<sub>s</sub>=${t.As_dowels_req_cm2} cm²${t.gobierna_minimo ? ' mín' : ''}), ℓ<sub>dc</sub>=${t.ldc_dowel_m}/${t.ldc_disponible_m} m ${ok(t.cumple_dowels)}</div>`;
+  }
 
   const avisos = (res.avisos && res.avisos.length)
     ? `<div class="hint" style="border-color:var(--status-warn-bd);color:var(--status-warn-tx)">⚠ ${res.avisos.join('<br>⚠ ')}</div>` : '';
@@ -212,10 +253,11 @@ function zapRenderAislada(res) {
     <div class="pil-line"><b>Geotecnia:</b> A requerida ${geo.A_req_m2} m² · P total ${_ztf(geo.P_total_servicio_kN).toFixed(1)} tonf ·
       q<sub>máx</sub> ${_ztp(geo.q_max_kPa).toFixed(1)} / q<sub>adm</sub> ${_ztp(geo.q_adm_kPa).toFixed(1)} tonf/m² → ${ok(geo.cumple)} (D/C=${geo.ratio})</div>
     <div class="pil-line"><b>q<sub>u</sub> de diseño:</b> ${_ztp(e.qu_kPa).toFixed(1)} tonf/m² · P<sub>u</sub> ${_ztf(e.Pu_kN).toFixed(1)} tonf</div>
-    <div class="pil-line"><b>Punzonamiento (2 vías):</b> V<sub>u</sub>=${_ztf(e.punzonamiento.Vu_kN).toFixed(1)} φV<sub>c</sub>=${_ztf(e.punzonamiento.phiVc_kN).toFixed(1)} tonf (v<sub>c</sub>=${e.punzonamiento.vc_MPa} MPa) → ${ok(e.punzonamiento.cumple)} (D/C=${e.punzonamiento.ratio})</div>
+    ${punzLine}
     <div class="pil-line"><b>Cortante 1 vía:</b> dir B → D/C=${e.una_via_L.ratio} ${ok(e.una_via_L.cumple)} · dir L → D/C=${e.una_via_B.ratio} ${ok(e.una_via_B.cumple)}</div>
+    ${transfLine}
     <table class="pil-table" style="margin-top:8px">
-      <thead><tr><th>Flexión</th><th style="text-align:right">Mu (tonf·m)</th><th style="text-align:right">As (cm²)</th><th style="text-align:right">Refuerzo</th></tr></thead>
+      <thead><tr><th>Flexión</th><th style="text-align:right">Mu (tonf·m)</th><th style="text-align:right">As (cm²)</th><th style="text-align:right">Refuerzo</th><th style="text-align:right">ℓd/disp (m)</th></tr></thead>
       <tbody>${fila(e.flexion_L, 'Dir. B (volado en L)')}${fila(e.flexion_B, 'Dir. L (volado en B)')}</tbody>
     </table>
     ${avisos}`;

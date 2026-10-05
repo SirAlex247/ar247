@@ -285,6 +285,18 @@ def generar_memoria_dado(datos, resultado, entradas) -> bytes:
          f"{_tf(pp['phiVc_kN']):.1f}", f"{pp['ratio']}", "cumple" if pp["cumple"] else "no cumple"],
     ], [2.2 * cm, 2.0 * cm, 2.2 * cm, 2.4 * cm, 2.4 * cm, 1.7 * cm, 2.3 * cm]))
 
+    # Transferencia de momento por cortante excéntrico (γv) en la columna.
+    if pc.get("vu_momento_kPa", 0.0) > 0.1:
+        el.append(Spacer(1, 3))
+        el.append(Paragraph(
+            f"Transferencia de momento por cortante excéntrico (NSR-10 C.11.11.7): una "
+            f"fracción γ<sub>v</sub> = {pc['gamma_v_x']:.3f} del momento se resiste como "
+            f"cortante en el perímetro crítico. Esfuerzo combinado v<sub>u</sub> = "
+            f"v<sub>directo</sub> + v<sub>momento</sub> = {pc['vu_directo_kPa']/1000.0:.2f} + "
+            f"{pc['vu_momento_kPa']/1000.0:.2f} = {pc['vu_total_kPa']/1000.0:.2f} MPa ≤ "
+            f"φv<sub>c</sub> = {pc['phi_vc_kPa']/1000.0:.2f} MPa · D/C = {pc['ratio_momento']} → "
+            f"<b>{_ok(pc['cumple_momento'])}</b>.", p))
+
     el.append(Spacer(1, 4))
     el.append(Paragraph("4.2 Cortante en una vía (a d de la cara)", p))
     el.append(_tabla([
@@ -333,15 +345,54 @@ def generar_memoria_dado(datos, resultado, entradas) -> bytes:
         f"<b>Acero inferior adoptado ({metodo_txt}):</b> dir. X = {est['as_x_rec_cm2']:.1f} cm² · "
         f"dir. Y = {est['as_y_rec_cm2']:.1f} cm².", p))
 
+    # 4.5 Transferencia de carga columna→dado (aplastamiento + dowels)
+    tr = est.get("transferencia")
+    if tr:
+        el.append(Paragraph("4.5 Transferencia de carga columna→dado (NSR-10 C.15.8)", p))
+        el.append(_tabla([
+            ["Concepto", "Valor", "Concepto", "Valor"],
+            ["Pu", f"{_tf(tr['Pu_kN']):.1f} tonf", "√(A₂/A₁)", f"{tr['sqrt_A2A1']:.2f}"],
+            ["φPn dado", f"{_tf(tr['phiPn_zapata_kN']):.1f} tonf",
+             "φPn columna", f"{_tf(tr['phiPn_columna_kN']):.1f} tonf"],
+            ["φPn aplast.", f"{_tf(tr['phiPn_kN']):.1f} tonf",
+             "D/C aplast.", f"{tr['ratio']}"],
+            ["Dowels", f"{tr['n_dowels']} Ø{tr['db_dowel_mm']:.0f} mm",
+             "As dowels req.", f"{tr['As_dowels_req_cm2']:.1f} cm²"],
+            ["ℓdc dowel", f"{tr['ldc_dowel_m']*100:.0f} cm",
+             "ℓdc disponible", f"{tr['ldc_disponible_m']*100:.0f} cm"],
+        ], [3.2 * cm, 4.1 * cm, 3.2 * cm, 4.1 * cm], header=False))
+        el.append(Spacer(1, 2))
+        if not tr["cumple_aplastamiento"]:
+            el.append(Paragraph(
+                "El aplastamiento en la interfaz se excede; el exceso de carga lo toman "
+                "los dowels (no es una falla si éstos se desarrollan dentro del espesor).", small))
+        el.append(Paragraph(
+            f"Desarrollo de los dowels: ℓ<sub>dc</sub> = {tr['ldc_dowel_m']*100:.0f} cm ≤ "
+            f"disponible {tr['ldc_disponible_m']*100:.0f} cm → <b>{_ok(tr['cumple_dowels'])}</b>.", p))
+
+    # 4.6 Anclaje del acero de tracción (tensor) y de las barras de la columna
+    an = est.get("anclaje_tensor")
     el.append(Spacer(1, 4))
+    el.append(Paragraph("4.6 Anclaje del refuerzo", p))
     el.append(Paragraph(
-        f"4.5 Anclaje de las barras de la columna: ℓ<sub>dc</sub> = "
-        f"{est['ldc_columna_m']*100:.0f} cm (desarrollo a compresión en el dado).", p))
+        f"Barras de la columna (compresión en el dado): ℓ<sub>dc</sub> = "
+        f"{est['ldc_columna_m']*100:.0f} cm.", p))
+    if an:
+        _tensor_ok = an["cumple_x"] and an["cumple_y"]
+        el.append(Paragraph(
+            f"Acero inferior (tensor) más allá del eje del pilote: ℓ<sub>d</sub> = "
+            f"{an['ld_m']*100:.0f} cm; longitud disponible = {an['disp_x_m']*100:.0f} cm (X) / "
+            f"{an['disp_y_m']*100:.0f} cm (Y) → <b>{_ok(_tensor_ok)}</b>.", p))
+        if an["requiere_gancho"]:
+            el.append(Paragraph(
+                "La longitud recta disponible es insuficiente: colocar gancho estándar a 90° "
+                "en el extremo de las barras (crítico en el método de bielas, donde el tensor "
+                "debe desarrollar su fuerza total sobre el pilote).", small))
 
     el.append(Spacer(1, 5))
     el.append(Paragraph(
         f"<b>Verificación global: {_ok(resultado['cumple'])}</b> "
-        f"(capacidad de pilotes, punzonamiento y cortante).", p))
+        f"(capacidad de pilotes, punzonamiento, cortante y transferencia de carga).", p))
 
     for a in resultado.get("avisos", []):
         el.append(Paragraph(f"⚠ {a}", small))

@@ -26,9 +26,11 @@ from .zapata import (
     PHI_CORTE,
     PHI_FLEX,  # noqa: F401  (reexport de conveniencia)
     _area_barra,  # noqa: F401
+    _longitud_desarrollo,
     _redondea_arriba,
+    _transferencia_carga,
 )
-from .zapatas_tipos import _As_de_Mu, _punz_columna
+from .zapatas_tipos import _As_de_Mu, _punz_columna, _punz_columna_momento
 
 
 # ===========================================================================
@@ -44,12 +46,17 @@ def _prepara_columnas(columnas, B, L, voladizo, factor_carga):
     for c in columnas:
         P = float(c.get("P", c.get("P_servicio", 0.0)) or 0.0)
         Pu = float(c.get("Pu", 0.0) or 0.0) or factor_carga * P
+        Mx = float(c.get("Mx", 0.0) or 0.0)
+        My = float(c.get("My", 0.0) or 0.0)
         cols.append({
             "x": float(c.get("x", 0.0) or 0.0),
             "y": float(c.get("y", 0.0) or 0.0),
             "P": P, "Pu": Pu,
             "c1": float(c.get("c1", 0.40) or 0.40),
             "c2": float(c.get("c2", 0.40) or 0.40),
+            "Mx": Mx, "My": My,
+            "Mux": float(c.get("Mux", 0.0) or 0.0) or factor_carga * abs(Mx),
+            "Muy": float(c.get("Muy", 0.0) or 0.0) or factor_carga * abs(My),
         })
     xs = [c["x"] for c in cols]
     ys = [c["y"] for c in cols]
@@ -148,6 +155,11 @@ def _franja(cols, key, longitud, ancho, Ru, d, fc, fy, rec, db, h, sqrt_fc):
 
     As_inf = _As_de_Mu(M_pos, ancho, d, fc, fy, rec, db, h)      # M⁺ → acero inferior
     As_sup = _As_de_Mu(-M_neg, ancho, d, fc, fy, rec, db, h)     # M⁻ → acero superior
+    # Longitud de desarrollo: disponible ≈ media luz de la franja (barras corren
+    # de un apoyo a otro; el punto crítico está entre columnas).
+    ld = _longitud_desarrollo(db, fc, fy, longitud / 2.0, rec)
+    As_inf["desarrollo"] = ld
+    As_sup["desarrollo"] = ld
     phiVc = PHI_CORTE * 0.17 * sqrt_fc * 1000.0 * ancho * d
     return {
         "eje": key, "w_kN_m": round(w, 1), "longitud_m": round(longitud, 3),
@@ -161,18 +173,34 @@ def _franja(cols, key, longitud, ancho, Ru, d, fc, fy, rec, db, h, sqrt_fc):
 
 
 def _punz_todas(cols, qfun_u, h, sqrt_fc, rec, db, B, L):
-    """Punzonamiento de todas las columnas; devuelve (lista, todas_cumplen)."""
+    """Punzonamiento (con transferencia de momento γv) de todas las columnas;
+    devuelve (lista, todas_cumplen)."""
     d = max(0.05, h - rec - db)
     res = []
     ok = True
     for i, c in enumerate(cols):
         qu_loc = max(0.0, qfun_u(c["x"], c["y"]))
         pos = _posicion_punz(c["x"], c["y"], c["c1"], c["c2"], d, B, L)
-        p = _punz_columna(c["Pu"], qu_loc, c["c1"], c["c2"], h, sqrt_fc, rec, db, pos)
+        p = _punz_columna_momento(c["Pu"], qu_loc, c["c1"], c["c2"], h, sqrt_fc,
+                                  rec, db, pos, c.get("Mux", 0.0), c.get("Muy", 0.0))
         p["columna"] = i + 1
         p["posicion"] = pos
         res.append(p)
-        ok = ok and p["cumple"]
+        ok = ok and p["cumple_momento"]
+    return res, ok
+
+
+def _transferencia_todas(cols, h, B, L, fc, fc_col, fy, rec, db_dowel):
+    """Transferencia de carga columna→losa (aplastamiento + dowels) por columna
+    (NSR-10 C.15.8). Devuelve (lista, todas_cumplen)."""
+    res = []
+    ok = True
+    for i, c in enumerate(cols):
+        t = _transferencia_carga(c["Pu"], c["c1"], c["c2"], h, B, L, fc, fc_col,
+                                 fy, rec, db_dowel)
+        t["columna"] = i + 1
+        res.append(t)
+        ok = ok and t["cumple_aplastamiento"] and t["cumple_dowels"]
     return res, ok
 
 
@@ -182,7 +210,8 @@ def _punz_todas(cols, qfun_u, h, sqrt_fc, rec, db, B, L):
 def disenar_placa(*, columnas, q_adm, B=0.0, L=0.0, h=0.0,
                   fc=21.0, fy=420.0, recubrimiento=0.075, db=0.01905,
                   Df=1.5, gamma_suelo=18.0, gamma_concreto=24.0,
-                  factor_carga=1.5, voladizo=0.5) -> dict:
+                  factor_carga=1.5, voladizo=0.5,
+                  fc_columna=0.0, db_dowel=0.0) -> dict:
     """Diseña (o verifica) una placa/losa de cimentación maciza rígida.
 
     ``columnas``: lista de dicts {x, y, P, Pu?, c1, c2} (posiciones en m, cargas
@@ -234,13 +263,30 @@ def disenar_placa(*, columnas, q_adm, B=0.0, L=0.0, h=0.0,
     # --- Estructural ---
     qfun_u = _presiones(cols, B, L, "Pu")["q_func"]
     punz, ok_punz = _punz_todas(cols, qfun_u, h, sqrt_fc, recubrimiento, db, B, L)
-    idx_punz = max(range(len(punz)), key=lambda i: punz[i]["ratio"] or 0.0)
+    idx_punz = max(range(len(punz)),
+                   key=lambda i: punz[i].get("ratio_momento") or punz[i]["ratio"] or 0.0)
     franja_x = _franja(cols, "x", B, L, Ru, d, fc, fy, recubrimiento, db, h, sqrt_fc)
     franja_y = _franja(cols, "y", L, B, Ru, d, fc, fy, recubrimiento, db, h, sqrt_fc)
     cumple_cort = ok_punz and franja_x["cumple_cortante"] and franja_y["cumple_cortante"]
     if not cumple_cort:
-        avisos.append("El cortante (punzonamiento o viga ancha) no cumple con el "
-                      "espesor: aumenta h.")
+        avisos.append("El cortante (punzonamiento con momento o viga ancha) no "
+                      "cumple con el espesor: aumenta h.")
+
+    # --- Transferencia de carga columna→losa (aplastamiento + dowels, C.15.8) ---
+    fc_col = fc_columna if (fc_columna and fc_columna > 0) else fc
+    db_dow = db_dowel if (db_dowel and db_dowel > 0) else db
+    transferencia, ok_transf = _transferencia_todas(
+        cols, h, B, L, fc, fc_col, fy, recubrimiento, db_dow)
+    idx_transf = max(range(len(transferencia)),
+                     key=lambda i: transferencia[i]["ratio"] or 0.0)
+    if not ok_transf:
+        avisos.append("La transferencia de carga columna-losa (aplastamiento o "
+                      "dowels) no cumple en alguna columna: revisa f'c o los dowels.")
+    # ℓd de las franjas
+    if (franja_x["acero_inferior"]["desarrollo"]["requiere_gancho"]
+            or franja_y["acero_inferior"]["desarrollo"]["requiere_gancho"]):
+        avisos.append("Alguna barra de flexión de las franjas no desarrolla su "
+                      "longitud disponible: usa gancho o barras de menor diámetro.")
 
     if abs(pg["ex"]) > B / 6.0 or abs(pg["ey"]) > L / 6.0:
         avisos.append("La excentricidad de las cargas excede el núcleo central "
@@ -279,8 +325,11 @@ def disenar_placa(*, columnas, q_adm, B=0.0, L=0.0, h=0.0,
             "factor_carga": factor_carga, "h_m": h, "d_m": round(d, 4),
             "punzonamiento": punz,
             "punz_critico": punz[idx_punz],
+            "transferencia": transferencia,
+            "transf_critica": transferencia[idx_transf],
             "franja_x": franja_x, "franja_y": franja_y,
             "cumple_cortante": cumple_cort,
+            "cumple_transferencia": ok_transf,
         },
         "avisos": avisos,
     }
@@ -290,15 +339,16 @@ def disenar_placa(*, columnas, q_adm, B=0.0, L=0.0, h=0.0,
 # Utilidad: construir una malla regular de columnas
 # ===========================================================================
 def malla_columnas(*, nx, ny, sx, sy, P, c1=0.40, c2=0.40, Pu=0.0,
-                   factor_carga=1.5):
+                   factor_carga=1.5, Mx=0.0, My=0.0):
     """Genera una malla regular ``nx × ny`` de columnas igualmente espaciadas
-    (``sx``, ``sy``) con la misma carga ``P``. Devuelve la lista de columnas
-    (coordenadas relativas a la esquina de la primera columna)."""
+    (``sx``, ``sy``) con la misma carga ``P`` (y momento por columna ``Mx``/``My``
+    opcional). Devuelve la lista de columnas."""
     nx = max(1, int(nx))
     ny = max(1, int(ny))
     cols = []
     for j in range(ny):
         for i in range(nx):
             cols.append({"x": i * sx, "y": j * sy, "P": P,
-                         "Pu": Pu or factor_carga * P, "c1": c1, "c2": c2})
+                         "Pu": Pu or factor_carga * P, "c1": c1, "c2": c2,
+                         "Mx": Mx, "My": My})
     return cols

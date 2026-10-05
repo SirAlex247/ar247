@@ -19,6 +19,14 @@ from __future__ import annotations
 
 import math
 
+from .zapata import (
+    _control_fisuracion,
+    _cuantia_maxima,
+    _jc_c,
+    _longitud_desarrollo,
+    _transferencia_carga,
+)
+
 PHI_FLEX = 0.90
 PHI_CORTE = 0.75
 
@@ -103,9 +111,10 @@ def reacciones(coords, P, Mux=0.0, Muy=0.0):
 # Punzonamiento (dos vías)
 # ----------------------------------------------------------------------------
 def _punz_columna(coords, R, c1, c2, d, sqrt_fc, P_col, posicion,
-                  phi_corte=PHI_CORTE, dv=None, ccp=False):
-    """Punzonamiento (dos vías) en la columna. ``dv`` = peralte de cortante
-    (CCP-14: max(0.9d,0.72h)); ``ccp`` cambia la fórmula de v_c a AASHTO."""
+                  phi_corte=PHI_CORTE, dv=None, ccp=False, Mux=0.0, Muy=0.0):
+    """Punzonamiento (dos vías) en la columna, con transferencia de momento por
+    cortante excéntrico (γv). ``dv`` = peralte de cortante (CCP-14:
+    max(0.9d,0.72h)); ``ccp`` cambia la fórmula de v_c a AASHTO."""
     dsh = dv if dv else d
     bo = 2.0 * (c1 + dsh) + 2.0 * (c2 + dsh)
     hx = (c1 + dsh) / 2.0; hy = (c2 + dsh) / 2.0
@@ -121,10 +130,30 @@ def _punz_columna(coords, R, c1, c2, d, sqrt_fc, P_col, posicion,
                  0.17 * (1.0 + 2.0 / beta_c) * sqrt_fc,
                  0.083 * (alfa * dsh / bo + 2.0) * sqrt_fc)
     phiVc = phi_corte * vc * 1000.0 * bo * dsh
-    return {"b0_m": round(bo, 4), "vc_MPa": round(vc, 3), "Vu_kN": round(Vu, 1),
-            "phiVc_kN": round(phiVc, 1),
-            "ratio": round(Vu / phiVc, 3) if phiVc > 0 else None,
-            "cumple": Vu <= phiVc}
+    res = {"b0_m": round(bo, 4), "vc_MPa": round(vc, 3), "Vu_kN": round(Vu, 1),
+           "phiVc_kN": round(phiVc, 1),
+           "ratio": round(Vu / phiVc, 3) if phiVc > 0 else None,
+           "cumple": Vu <= phiVc}
+    # Transferencia de momento por cortante excéntrico (NSR-10 C.11.11.7).
+    v_dir = Vu / (bo * dsh) if (bo * dsh) > 0 else 0.0
+    b1x, b2x = c1 + dsh, c2 + dsh
+    gvx = 1.0 - 1.0 / (1.0 + (2.0 / 3.0) * math.sqrt(b1x / b2x))
+    Jcx, cx = _jc_c(b1x, b2x, dsh)
+    v_mx = gvx * abs(Mux) * cx / Jcx if Jcx > 0 else 0.0
+    b1y, b2y = c2 + dsh, c1 + dsh
+    gvy = 1.0 - 1.0 / (1.0 + (2.0 / 3.0) * math.sqrt(b1y / b2y))
+    Jcy, cy = _jc_c(b1y, b2y, dsh)
+    v_my = gvy * abs(Muy) * cy / Jcy if Jcy > 0 else 0.0
+    vu_tot = v_dir + v_mx + v_my
+    phi_vc = phi_corte * vc * 1000.0
+    res.update({
+        "gamma_v_x": round(gvx, 3),
+        "vu_directo_kPa": round(v_dir, 1), "vu_momento_kPa": round(v_mx + v_my, 1),
+        "vu_total_kPa": round(vu_tot, 1), "phi_vc_kPa": round(phi_vc, 1),
+        "ratio_momento": round(vu_tot / phi_vc, 3) if phi_vc > 0 else None,
+        "cumple_momento": vu_tot <= phi_vc,
+    })
+    return res
 
 
 def _punz_pilote(Dp, d, sqrt_fc, R_max, phi_corte=PHI_CORTE, dv=None, ccp=False):
@@ -201,10 +230,18 @@ def _flexion(coords, R, eje, c_cara, d, b_ancho, fc, fy, rec, db, h, ccp=False):
     ab = _area_barra(db)
     nb = max(2, math.ceil(As_fin / ab)) if ab > 0 else 0
     sep = (b_ancho - 2 * rec) / (nb - 1) if nb > 1 else 0.0
+    # Control de fisuración (C.10.6): si la separación excede el máximo, agrega barras.
+    fis = _control_fisuracion(sep, rec, fy)
+    if not fis["cumple"] and fis["sep_max_m"] > 0:
+        nb = max(nb, math.ceil((b_ancho - 2 * rec) / fis["sep_max_m"]) + 1)
+        sep = (b_ancho - 2 * rec) / (nb - 1) if nb > 1 else 0.0
+        fis = _control_fisuracion(sep, rec, fy)
     return {"Mu_kNm": round(Mu, 1), "As_req_cm2": round(As_req * 1e4, 2),
             "As_min_cm2": round(As_min * 1e4, 2), "As_cm2": round(As_fin * 1e4, 2),
             "gobierna_minimo": As_min >= As_req, "n_barras": nb,
-            "db_mm": round(db * 1000.0, 1), "sep_cm": round(sep * 100.0, 1)}
+            "db_mm": round(db * 1000.0, 1), "sep_cm": round(sep * 100.0, 1),
+            "fisuracion": fis,
+            "cuantia": _cuantia_maxima(As_fin, b_ancho, d, fc, fy)}
 
 
 # ----------------------------------------------------------------------------
@@ -260,7 +297,7 @@ def disenar_dado(*, n_pilotes, Dp, c1, c2, Pu, Mux=0.0, Muy=0.0,
                  recubrimiento=0.075, db=0.01905, db_col=0.01905,
                  capacidad_pilote=0.0, gamma_concreto=24.0,
                  factor_peso=1.2, posicion="interior", metodo="ambos",
-                 norma="NSR10") -> dict:
+                 norma="NSR10", fc_columna=0.0) -> dict:
     """Diseña (o verifica) un dado/cabezal sobre n_pilotes (1..6).
 
     metodo: acero inferior por 'flexion' (método seccional), 'bielas'
@@ -303,11 +340,11 @@ def disenar_dado(*, n_pilotes, Dp, c1, c2, Pu, Mux=0.0, Muy=0.0,
             d_ = max(0.05, h - recubrimiento - db)
             dv_ = _dv(d_, h)
             R_ = reacciones(coords, Pu, Mux, Muy)
-            pc = _punz_columna(coords, R_, c1, c2, d_, sqrt_fc, Pu, posicion, phi_corte, dv_, ccp)
+            pc = _punz_columna(coords, R_, c1, c2, d_, sqrt_fc, Pu, posicion, phi_corte, dv_, ccp, Mux, Muy)
             pp = _punz_pilote(Dp, d_, sqrt_fc, max(R_), phi_corte, dv_, ccp)
             cvx = _cortante_una_via(coords, R_, "x", c1, d_, Ly, sqrt_fc, phi_corte, dv_, ccp)
             cvy = _cortante_una_via(coords, R_, "y", c2, d_, Bx, sqrt_fc, phi_corte, dv_, ccp)
-            if pc["cumple"] and pp["cumple"] and cvx["cumple"] and cvy["cumple"]:
+            if pc["cumple_momento"] and pp["cumple"] and cvx["cumple"] and cvy["cumple"]:
                 break
             h = round(h + 0.05, 3)
     h = round(h, 3)
@@ -331,7 +368,7 @@ def disenar_dado(*, n_pilotes, Dp, c1, c2, Pu, Mux=0.0, Muy=0.0,
 
     # ---- Chequeos estructurales ----
     dv = _dv(d, h)
-    pc = _punz_columna(coords, R, c1, c2, d, sqrt_fc, Pu, posicion, phi_corte, dv, ccp)
+    pc = _punz_columna(coords, R, c1, c2, d, sqrt_fc, Pu, posicion, phi_corte, dv, ccp, Mux, Muy)
     pp = _punz_pilote(Dp, d, sqrt_fc, max(R), phi_corte, dv, ccp)
     cvx = _cortante_una_via(coords, R, "x", c1, d, Ly, sqrt_fc, phi_corte, dv, ccp)
     cvy = _cortante_una_via(coords, R, "y", c2, d, Bx, sqrt_fc, phi_corte, dv, ccp)
@@ -339,6 +376,25 @@ def disenar_dado(*, n_pilotes, Dp, c1, c2, Pu, Mux=0.0, Muy=0.0,
     fy_ = _flexion(coords, R, "y", c2, d, Bx, fc, fy, recubrimiento, db, h, ccp)
     biela = _biela(coords, R, forma, c1, c2, d, fy, db)
     ldc = _ldc(db_col, fy, fc)
+
+    # ---- #3 Transferencia de carga columna→dado (aplastamiento + dowels, C.15.8) ----
+    fc_col = fc_columna if (fc_columna and fc_columna > 0) else fc
+    transferencia = _transferencia_carga(Pu, c1, c2, h, Bx, Ly, fc, fc_col, fy,
+                                         recubrimiento, db_col)
+
+    # ---- #2 Anclaje del acero de tracción (tensor) más allá del eje del pilote ----
+    # Longitud disponible = del eje del pilote más alejado a la cara del dado.
+    x_ext = max((abs(cc[0]) for cc in coords), default=0.0)
+    y_ext = max((abs(cc[1]) for cc in coords), default=0.0)
+    disp_x = max(0.0, (Bx / 2.0 - x_ext) + Dp / 2.0 - recubrimiento)
+    disp_y = max(0.0, (Ly / 2.0 - y_ext) + Dp / 2.0 - recubrimiento)
+    ld_t = _longitud_desarrollo(db, fc, fy, 0.0, 0.0)["ld_m"]   # ℓd de tracción (m)
+    anclaje_tensor = {
+        "ld_m": round(ld_t, 3),
+        "disp_x_m": round(disp_x, 3), "disp_y_m": round(disp_y, 3),
+        "cumple_x": ld_t <= disp_x + 1e-6, "cumple_y": ld_t <= disp_y + 1e-6,
+        "requiere_gancho": ld_t > min(disp_x, disp_y) + 1e-6,
+    }
 
     # ---- Acero inferior gobernante según el método elegido ----
     if biela["tipo"] == "triangular":
@@ -356,9 +412,27 @@ def disenar_dado(*, n_pilotes, Dp, c1, c2, Pu, Mux=0.0, Muy=0.0,
     as_x_rec = _as_dir(fx, bxa)
     as_y_rec = _as_dir(fy_, bya)
 
-    cumple_cortante = pc["cumple"] and pp["cumple"] and cvx["cumple"] and cvy["cumple"]
+    cumple_cortante = (pc["cumple_momento"] and pp["cumple"] and cvx["cumple"]
+                       and cvy["cumple"])
     if not cumple_cortante:
-        avisos.append("El cortante/punzonamiento no cumple con el espesor dado: aumenta h.")
+        avisos.append("El cortante/punzonamiento (con momento) no cumple con el "
+                      "espesor dado: aumenta h.")
+    # El exceso de aplastamiento lo toman los dowels; el chequeo gobernante es
+    # que los dowels se desarrollen (ℓdc) dentro del espesor.
+    cumple_transf = transferencia["cumple_dowels"]
+    if not transferencia["cumple_aplastamiento"]:
+        avisos.append("El aplastamiento en la interfaz columna→dado se excede; los "
+                      "dowels toman la carga extra (revisa su cuantía) o sube f'c.")
+    if not transferencia["cumple_dowels"]:
+        avisos.append("La longitud de desarrollo de los dowels no cabe en el "
+                      "espesor del dado: usa barras de menor diámetro o gancho.")
+    if anclaje_tensor["requiere_gancho"]:
+        avisos.append("El acero de tracción no desarrolla su longitud más allá del "
+                      "eje del pilote: coloca gancho estándar (crítico en el método "
+                      "de bielas).")
+    if not (fx["cuantia"]["cumple"] and fy_["cuantia"]["cumple"]):
+        avisos.append("La cuantía de flexión supera la máxima por ductilidad "
+                      "(εt < 0.004): aumenta h o f'c.")
 
     # ---- Clasificación rígido / flexible ----
     m_vol = max(max(abs(c[0]) for c in coords) - c1 / 2.0,
@@ -372,7 +446,7 @@ def disenar_dado(*, n_pilotes, Dp, c1, c2, Pu, Mux=0.0, Muy=0.0,
         avisos.append("Encepado RÍGIDO (m ≤ 1.5·H): el acero inferior se gobierna por el método de "
                       "bielas (puntal-tensor).")
 
-    cumple = cumple_pilote and cumple_cortante
+    cumple = cumple_pilote and cumple_cortante and cumple_transf
 
     return {
         "norma": norma,
@@ -399,8 +473,11 @@ def disenar_dado(*, n_pilotes, Dp, c1, c2, Pu, Mux=0.0, Muy=0.0,
             "punz_columna": pc, "punz_pilote": pp,
             "cortante_x": cvx, "cortante_y": cvy, "flexion_x": fx, "flexion_y": fy_,
             "biela": biela, "ldc_columna_m": ldc, "metodo": metodo,
+            "transferencia": transferencia,
+            "anclaje_tensor": anclaje_tensor,
             "as_x_rec_cm2": round(as_x_rec, 2), "as_y_rec_cm2": round(as_y_rec, 2),
             "cumple_cortante": cumple_cortante,
+            "cumple_transferencia": cumple_transf,
         },
         "cumple": cumple,
         "avisos": avisos,

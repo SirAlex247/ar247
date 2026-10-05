@@ -938,6 +938,87 @@
           </div>
 
           <div class="card">
+            <div class="card-header"><div class="card-title">Solicitaciones estructurales (opcional)</div></div>
+            <div class="field-row">
+              <div class="field">
+                <label class="field-label">Momento por pilote M <span class="unit">tonf·m</span></label>
+                <input type="number" id="pil_M" data-mag="moment" class="input" value="0" step="1">
+              </div>
+              <div class="field">
+                <label class="field-label">Tracción/arranque T <span class="unit">tonf</span></label>
+                <input type="number" id="pil_T" data-mag="force" class="input" value="0" step="5">
+              </div>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label class="field-label">Longitud libre L<sub>u</sub> <span class="unit">m</span></label>
+                <input type="number" id="pil_Lu" data-mag="length" class="input" value="0" step="0.5">
+              </div>
+              <div class="field">
+                <label class="field-label">k (long. efectiva)</label>
+                <input type="number" id="pil_k" class="input" value="1.0" step="0.1">
+              </div>
+            </div>
+            <div class="field" style="max-width:260px">
+              <label class="field-label">Disipación sísmica</label>
+              <select id="pil_disip" class="input">
+                <option value="DMO" selected>DMO (moderada)</option>
+                <option value="DES">DES (especial)</option>
+                <option value="DMI">DMI (mínima)</option>
+              </select>
+            </div>
+            <div class="hint mt-3">M (flexo-compresión, diagrama P-M), T (capacidad a tracción del acero), y L<sub>u</sub> = tramo libre del pilote (agua, socavación o suelo muy blando) para la esbeltez. Si M=T=L<sub>u</sub>=0, se verifica solo a compresión axial.</div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><div class="card-title">Grupo y carga lateral (opcional)</div></div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">Momento grupo M<sub>x</sub> <span class="unit">tonf·m</span></label>
+                <input type="number" id="pil_Mx" data-mag="moment" class="input" value="0" step="1"></div>
+              <div class="field"><label class="field-label">Momento grupo M<sub>y</sub> <span class="unit">tonf·m</span></label>
+                <input type="number" id="pil_My" data-mag="moment" class="input" value="0" step="1"></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">Fuerza horizontal H <span class="unit">tonf</span></label>
+                <input type="number" id="pil_H" data-mag="force" class="input" value="0" step="1"></div>
+              <div class="field"><label class="field-label">Separación pilotes <span class="unit">m</span></label>
+                <input type="number" id="pil_sgrp" data-mag="length" class="input" placeholder="auto (3D)" step="0.1"></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">Reacción del suelo</label>
+                <select id="pil_treac" class="input">
+                  <option value="nh" selected>Arena — n<sub>h</sub> (tonf/m³)</option>
+                  <option value="k">Arcilla — k (tonf/m³)</option>
+                </select></div>
+              <div class="field"><label class="field-label">Módulo de reacción <span class="unit">tonf/m³</span></label>
+                <input type="number" id="pil_reac" data-mag="gamma" class="input" value="0" step="10"></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">Cabeza del pilote</label>
+                <select id="pil_cabeza" class="input">
+                  <option value="libre" selected>Libre (articulada)</option>
+                  <option value="fija">Fija (empotrada en el cabezal)</option>
+                </select></div>
+              <div class="field"><label class="field-label">γ' suelo (p-y) <span class="unit">tonf/m³</span></label>
+                <input type="number" id="pil_glat" data-mag="gamma" class="input" value="0" step="0.05"></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">φ arena / c<sub>u</sub> arcilla <span class="unit">° o tonf/m²</span></label>
+                <input type="number" id="pil_phicu" class="input" value="0" step="1"></div>
+              <div class="field"><label class="field-label">ε₅₀ (arcilla)</label>
+                <input type="number" id="pil_eps50" class="input" value="0.01" step="0.005"></div>
+            </div>
+            <div class="hint mt-3">Con H, γ' y φ (arena) o c<sub>u</sub>+ε₅₀ (arcilla) se corre el <b>análisis p-y no lineal</b> (perfiles de deflexión/momento) en vez de Broms lineal.</div>
+            <div class="field-row" style="margin-top:8px">
+              <div class="field"><label class="field-label">Fricción negativa f<sub>s,neg</sub> <span class="unit">tonf/m²</span></label>
+                <input type="number" id="pil_fsneg" data-mag="pressure" class="input" value="0" step="0.5"></div>
+              <div class="field"><label class="field-label">Espesor consolidable <span class="unit">m</span></label>
+                <input type="number" id="pil_ldd" data-mag="length" class="input" value="0" step="0.5"></div>
+            </div>
+            <div class="hint mt-3">Downdrag: si el suelo blando consolida, la fricción negativa suma carga axial (Q<sub>n</sub> = f<sub>s,neg</sub>·πD·L). El pandeo (Davisson) usa la longitud libre L<sub>u</sub>.</div>
+          </div>
+
+          <div class="card">
             <div class="card-header"><div class="card-title">Geotecnia (del estudio de suelos)</div></div>
             <div class="field-row">
               <div class="field">
@@ -1044,6 +1125,16 @@
               <div style="padding:36px;text-align:center;color:var(--text-muted)">Presiona "Calcular" para ver el esquema y los resultados.</div>
             </div>
             <div class="hint mt-3" id="pile-vista-hint" style="display:none">Arrastra para orbitar · rueda para acercar/alejar · clic derecho para desplazar · doble clic para reencuadrar.</div>
+          </div>
+          <div class="card" id="pil-pm-card" style="display:none">
+            <div class="card-header"><div class="card-title">Flexo-compresión — diagrama P-M</div></div>
+            <div id="pil-pm-diagram" style="min-height:300px"></div>
+            <div class="hint mt-3">El punto de demanda (Mu, Pu) debe caer dentro de la curva φPn–φMn. Verde = cumple, rojo = fuera del diagrama.</div>
+          </div>
+          <div class="card" id="pil-py-card" style="display:none">
+            <div class="card-header"><div class="card-title">Análisis lateral p-y — perfiles</div></div>
+            <div id="pil-py-diagram" style="min-height:320px"></div>
+            <div class="hint mt-3">Perfiles de deflexión y(z) y momento M(z) a lo largo del pilote, del análisis no lineal por curvas p-y (diferencias finitas).</div>
           </div>
         </div>
       </div>
@@ -1210,6 +1301,13 @@
               <div class="field"><label class="field-label">Recubrimiento <span class="unit">m</span></label>
                 <input type="number" id="zap_rec" data-mag="length" class="input" value="0.075" step="0.005"></div>
             </div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">f'c columna <span class="unit">kgf/cm² (opc.)</span></label>
+                <input type="number" id="zap_fccol" data-mag="stress" class="input" placeholder="= f'c zapata" step="5"></div>
+              <div class="field"><label class="field-label">Ø dowel <span class="unit">mm (opc.)</span></label>
+                <input type="number" id="zap_dbdow" class="input" placeholder="= Ø barra" step="0.1"></div>
+            </div>
+            <div class="hint mt-3">f'c de la columna y Ø de los dowels se usan en la verificación de transferencia de carga (aplastamiento + conexión, NSR-10 C.15.8). Déjalos vacíos para tomar los de la zapata.</div>
           </div>
 
           <div class="card">
@@ -1322,7 +1420,13 @@
               <div class="field"><label class="field-label">Columna c2 <span class="unit">m</span></label>
                 <input type="number" id="pl_c2" data-mag="length" class="input" value="0.50" step="0.05"></div>
             </div>
-            <div class="hint mt-3">Malla regular n<sub>x</sub>×n<sub>y</sub> con la misma carga por columna. El voladizo perimetral se agrega abajo.</div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">Momento M<sub>x</sub> por columna <span class="unit">tonf·m (opc.)</span></label>
+                <input type="number" id="pl_mcol" data-mag="moment" class="input" value="0" step="1"></div>
+              <div class="field"><label class="field-label">Momento M<sub>y</sub> por columna <span class="unit">tonf·m (opc.)</span></label>
+                <input type="number" id="pl_mcoly" data-mag="moment" class="input" value="0" step="1"></div>
+            </div>
+            <div class="hint mt-3">Malla regular n<sub>x</sub>×n<sub>y</sub> con la misma carga (y momento) por columna. El momento activa el punzonamiento con cortante excéntrico (γv). El voladizo perimetral se agrega abajo.</div>
           </div>
 
           <div class="card">
@@ -1357,6 +1461,13 @@
               <div class="field"><label class="field-label">Recubrimiento <span class="unit">m</span></label>
                 <input type="number" id="pl_rec" data-mag="length" class="input" value="0.075" step="0.005"></div>
             </div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">f'c columna <span class="unit">kgf/cm² (opc.)</span></label>
+                <input type="number" id="pl_fccol" data-mag="stress" class="input" placeholder="= f'c losa" step="5"></div>
+              <div class="field"><label class="field-label">Ø dowel <span class="unit">mm (opc.)</span></label>
+                <input type="number" id="pl_dbdow" class="input" placeholder="= Ø barra" step="0.1"></div>
+            </div>
+            <div class="hint mt-3">f'c de la columna y Ø de los dowels para la transferencia de carga columna→losa (aplastamiento + conexión, C.15.8).</div>
           </div>
 
           <div class="card">
@@ -2052,6 +2163,12 @@
               <div class="field"><label class="field-label">fy <span class="unit">kgf/cm²</span></label>
                 <input type="number" id="dado_fy" data-mag="stress" class="input" value="4200" step="100"></div>
             </div>
+            <div class="field-row">
+              <div class="field"><label class="field-label">f'c columna <span class="unit">kgf/cm² (opc.)</span></label>
+                <input type="number" id="dado_fccol" data-mag="stress" class="input" placeholder="= f'c dado" step="5"></div>
+              <div class="field"></div>
+            </div>
+            <div class="hint">f'c de la columna para la transferencia de carga (aplastamiento + dowels, C.15.8).</div>
             <div class="field-row">
               <div class="field"><label class="field-label">Ø barra inferior <span class="unit">mm</span></label>
                 <input type="number" id="dado_db" class="input" value="19.05" step="0.1"></div>

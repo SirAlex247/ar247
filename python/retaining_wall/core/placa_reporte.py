@@ -208,9 +208,28 @@ def generar_memoria_placa(datos, resultado, entradas) -> bytes:
          f"{_tf(pc['Vu_kN']):.1f}", f"{_tf(pc['phiVc_kN']):.1f}", f"{pc['ratio']}",
          "cumple" if pc["cumple"] else "no cumple"],
     ], [3.0 * cm, 2.0 * cm, 2.2 * cm, 2.3 * cm, 2.4 * cm, 1.7 * cm, 2.2 * cm]))
-    n_ok = sum(1 for x in est["punzonamiento"] if x["cumple"])
+    if pc.get("vu_momento_kPa", 0) > 0.1:
+        el.append(Paragraph(
+            "Con transferencia de momento por cortante excéntrico (C.11.11.7): "
+            f"v<sub>u</sub> = {_tm(pc['vu_directo_kPa']):.1f} (directo) + "
+            f"{_tm(pc['vu_momento_kPa']):.1f} (γ<sub>v</sub>·M, γ<sub>v</sub>={pc['gamma_v_x']}) = "
+            f"<b>{_tm(pc['vu_total_kPa']):.1f}</b> tonf/m² vs φv<sub>c</sub> = "
+            f"{_tm(pc['phi_vc_kPa']):.1f} tonf/m² → <b>{_ok(pc['cumple_momento'])}</b> "
+            f"(D/C = {pc['ratio_momento']}).", p))
+    n_ok = sum(1 for x in est["punzonamiento"]
+               if x.get("cumple_momento", x["cumple"]))
     el.append(Paragraph(f"Punzonamiento verificado en las {len(est['punzonamiento'])} "
                         f"columnas: {n_ok} cumplen.", small))
+    # Transferencia de carga columna→losa
+    tc = est.get("transf_critica")
+    if tc:
+        el.append(Spacer(1, 2))
+        el.append(Paragraph(
+            "Transferencia de carga columna→losa (C.15.8), columna crítica "
+            f"#{tc['columna']}: aplastamiento P<sub>u</sub> = {_tf(tc['Pu_kN']):.1f} / "
+            f"φP<sub>n</sub> = {_tf(tc['phiPn_kN']):.1f} tonf (D/C = {tc['ratio']}) "
+            f"{_ok(tc['cumple_aplastamiento'])}; dowels {tc['n_dowels']} Ø{tc['db_dowel_mm']:.1f} "
+            f"(A<sub>s</sub> = {tc['As_dowels_req_cm2']:.1f} cm²) {_ok(tc['cumple_dowels'])}.", small))
 
     # 3.2 Flexión por franjas
     el.append(Spacer(1, 4))
@@ -237,6 +256,14 @@ def generar_memoria_placa(datos, resultado, entradas) -> bytes:
         f"φVc = {_tf(fx['phiVc_kN']):.1f} tonf ({_ok(fx['cumple_cortante'])}). "
         f"Franja Y: Vu = {_tf(fyy['V_max_kN']):.1f} tonf, "
         f"φVc = {_tf(fyy['phiVc_kN']):.1f} tonf ({_ok(fyy['cumple_cortante'])}).", p))
+    ai = fx["acero_inferior"]
+    fis = ai.get("fisuracion"); cua = ai.get("cuantia"); dv = ai.get("desarrollo")
+    if fis and cua and dv:
+        el.append(Paragraph(
+            f"Detallado del refuerzo (franja X): longitud de desarrollo ℓ<sub>d</sub> = "
+            f"{dv['ld_m']:.2f} m ≤ {dv['ld_disponible_m']:.2f} m disponible {_ok(dv['cumple'])}; "
+            f"control de fisuración (C.10.6) {_ok(fis['cumple'])}; cuantía ρ ≤ ρ<sub>máx</sub> "
+            f"(C.10.3.5) {_ok(cua['cumple'])}.", small))
 
     el.append(Spacer(1, 5))
     el.append(Paragraph(f"<b>Verificación al cortante: {_ok(est['cumple_cortante'])}</b>", p))

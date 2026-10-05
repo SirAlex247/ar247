@@ -185,6 +185,82 @@ def generar_memoria_pilote_diseno(datos, resultado, entradas) -> bytes:
          f"{_tf(e['Pu_pilote_kN']):.1f}", f"{e['ratio']}", "cumple" if e["cumple"] else "no cumple"],
     ], [2.6 * cm, 2.6 * cm, 2.8 * cm, 3.2 * cm, 1.8 * cm, 2.4 * cm]))
 
+    # 3.1 Grupo, carga lateral, flexo-compresión, esbeltez, tracción, cortante
+    fx = e.get("flexocompresion"); esb = e.get("esbeltez")
+    tracc = e.get("traccion"); cf = e.get("confinamiento_sismico")
+    gr = e.get("grupo"); lat = e.get("carga_lateral"); cv = e.get("cortante")
+    if gr and gr.get("n", 0) > 1 and abs(gr.get("P_max_kN", 0) - gr.get("P_min_kN", 0)) > 1:
+        el.append(Spacer(1, 4))
+        el.append(Paragraph(
+            "Distribución en el cabezal rígido (P<sub>i</sub> = P/n + M·x/Σx²): "
+            f"P<sub>máx</sub> = {_tf(gr['P_max_kN']):.1f} tonf, P<sub>mín</sub> = "
+            f"{_tf(gr['P_min_kN']):.1f} tonf"
+            + (" — <b>hay tracción</b> en pilotes de borde." if gr.get("hay_traccion") else "."), small))
+    if lat and lat.get("aplica"):
+        el.append(Paragraph(
+            f"Carga lateral ({lat['etiqueta']}): H = {_tf(lat['H_kN']):.1f} tonf → "
+            f"M<sub>máx</sub> = {_tf(lat['Mmax_kNm']):.1f} tonf·m, deflexión en la "
+            f"cabeza = {lat['y0_mm']} mm (cabeza {lat['cabeza']}).", small))
+    if fx and fx.get("Mu_kNm", 0) > 0.1:
+        el.append(Spacer(1, 4))
+        el.append(Paragraph("3.1 Flexo-compresión (diagrama de interacción P-M)", p))
+        mc = (f" amplificado a {_tf(esb['Mc_kNm']):.1f} tonf·m (δ_ns = {esb['delta_ns']})"
+              if esb and esb.get("es_esbelto") else "")
+        el.append(_tabla([
+            ["Pu (tonf)", "Mu (tonf·m)", "φMn disp. (tonf·m)", "Relación", "Estado"],
+            [f"{_tf(fx['Pu_kN']):.1f}", f"{_tf(fx['Mu_kNm']):.1f}{mc}",
+             f"{_tf(fx['phiMn_disponible_kNm']):.1f}", f"{fx['ratio_interaccion']}",
+             "cumple" if fx["cumple"] else "no cumple"],
+        ], [2.4 * cm, 4.6 * cm, 3.2 * cm, 2.0 * cm, 2.2 * cm]))
+    if esb:
+        if esb.get("es_esbelto"):
+            el.append(Paragraph(
+                f"Esbeltez (C.10.10): kL<sub>u</sub>/r = {esb['esbeltez_klu_r']} > "
+                f"{esb['limite']:.0f} → pilote esbelto; P<sub>c</sub> = "
+                f"{_tf(esb.get('Pc_kN', 0)):.1f} tonf, δ<sub>ns</sub> = {esb['delta_ns']}"
+                + (" — INESTABLE." if esb.get("inestable") else "."), small))
+        else:
+            el.append(Paragraph(
+                f"Esbeltez: kL<sub>u</sub>/r = {esb['esbeltez_klu_r']} ≤ "
+                f"{esb['limite']:.0f} → columna corta (sin amplificación).", small))
+    if tracc and tracc.get("aplica"):
+        el.append(Paragraph(
+            f"Tracción / arranque: φT<sub>n</sub> = 0.9·fy·A<sub>st</sub> = "
+            f"{_tf(tracc['phiTn_kN']):.1f} tonf ≥ T<sub>u</sub> = {_tf(tracc['Tu_kN']):.1f} "
+            f"tonf (D/C = {tracc['ratio']}) → {_ok(tracc['cumple'])}.", small))
+    if cv and cv.get("Vu_kN", 0) > 0.1:
+        el.append(Paragraph(
+            "Cortante de la sección circular (ACI 22.5, b<sub>w</sub>=D, d=0.8D): "
+            f"V<sub>u</sub> = {_tf(cv['Vu_kN']):.1f} tonf ≤ φV<sub>n</sub> = "
+            f"{_tf(cv['phiVn_kN']):.1f} tonf (φV<sub>c</sub> = {_tf(cv['phiVc_kN']):.1f} "
+            f"tonf) → {_ok(cv['cumple'])}.", small))
+    py = e.get("analisis_py"); dav = e.get("pandeo_davisson"); dd = e.get("downdrag")
+    if py and py.get("aplica"):
+        el.append(Paragraph(
+            f"Análisis lateral p-y no lineal ({py['tipo']}, diferencias finitas): "
+            f"M<sub>máx</sub> = {_tf(py['Mmax_kNm']):.1f} tonf·m a {py['z_Mmax_m']} m, "
+            f"deflexión en la cabeza = {py['y0_mm']} mm, V<sub>máx</sub> = "
+            f"{_tf(py['Vmax_kN']):.1f} tonf. Refuerzo longitudinal recomendado hasta "
+            f"≈ {py['z_refuerzo_m']} m de profundidad.", small))
+    if dav and dav.get("aplica"):
+        el.append(Paragraph(
+            f"Pandeo del pilote parcialmente embebido (Davisson): z<sub>fij</sub> = "
+            f"{dav['z_fijacion_m']} m, L<sub>e</sub> = {dav['Le_m']} m, P<sub>cr</sub> = "
+            f"{_tf(dav['Pcr_kN']):.1f} tonf, P<sub>adm</sub> = {_tf(dav['Padm_kN']):.1f} "
+            f"tonf → {_ok(dav['cumple'])}.", small))
+    if dd and dd.get("aplica"):
+        el.append(Paragraph(
+            f"Fricción negativa (downdrag): Q<sub>n</sub> = f<sub>s,neg</sub>·πD·L = "
+            f"{_tf(dd['Qn_kN']):.1f} tonf se suma a la carga axial; plano neutro a "
+            f"{dd['plano_neutro_m']} m.", small))
+    if cf:
+        paso = (f"espiral ρ_s = {cf['rho_s_confinamiento']}, paso ≤ {cf['paso_confinado_m']*100:.0f} cm"
+                if cf["tipo"] == "espiral"
+                else f"estribos sep ≤ {cf['sep_confinada_m']*100:.0f} cm")
+        el.append(Paragraph(
+            f"Confinamiento sísmico ({cf['disipacion']}, C.21): zona de rótula "
+            f"L<sub>o</sub> = {cf['longitud_confinamiento_m']} m; {paso}.", small))
+
     # 4. Verificación geotécnica (según norma)
     el.append(Paragraph("4. Capacidad geotécnica por pilote", h2))
     if ccp:

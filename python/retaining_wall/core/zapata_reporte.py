@@ -309,6 +309,15 @@ def generar_memoria_zapata(datos, resultado, entradas) -> bytes:
          f"{_tf(pz['phiVc_kN']):.1f}", f"{pz['ratio']}",
          "cumple" if pz["cumple"] else "no cumple"],
     ], [2.6 * cm, 2.6 * cm, 2.8 * cm, 2.8 * cm, 2.0 * cm, 2.6 * cm]))
+    if pz.get("vu_momento_kPa", 0) > 0.1:
+        el.append(Spacer(1, 3))
+        el.append(Paragraph(
+            "Transferencia de momento por cortante excéntrico (NSR-10 C.11.11.7): "
+            f"v<sub>u</sub> = {_tm(pz['vu_directo_kPa']):.1f} (directo) + "
+            f"{_tm(pz['vu_momento_kPa']):.1f} (γ<sub>v</sub>·M, γ<sub>v</sub>={pz['gamma_v_x']}) = "
+            f"<b>{_tm(pz['vu_total_kPa']):.1f}</b> tonf/m² vs φv<sub>c</sub> = "
+            f"{_tm(pz['phi_vc_kPa']):.1f} tonf/m² → <b>{_ok(pz['cumple_momento'])}</b> "
+            f"(D/C = {pz['ratio_momento']}).", p))
 
     # 3.2 Cortante una vía
     el.append(Spacer(1, 4))
@@ -327,18 +336,59 @@ def generar_memoria_zapata(datos, resultado, entradas) -> bytes:
     el.append(Paragraph("3.3 Flexión y refuerzo", p))
     def _fila_flex(f, dirn):
         gob = " (mín.)" if f["gobierna_minimo"] else ""
-        return [dirn, f"{_tm(f['Mu_kNm']):.2f}", f"{f['As_req_cm2']:.1f}",
-                f"{f['As_cm2']:.1f}{gob}", f"{f['n_barras']} Ø{f['db_mm']:.1f} @ {f['sep_cm']:.0f} cm"]
+        dv = f.get("desarrollo", {})
+        ld = (f"{dv.get('ld_m', 0):.2f}/{dv.get('ld_disponible_m', 0):.2f}"
+              + ("" if dv.get("cumple", True) else " ✗") if dv else "—")
+        return [dirn, f"{_tm(f['Mu_kNm']):.2f}", f"{f['As_cm2']:.1f}{gob}",
+                f"{f['n_barras']} Ø{f['db_mm']:.1f} @ {f['sep_cm']:.0f} cm", ld]
     el.append(_tabla([
-        ["Dirección", "Mu (tonf·m)", "As req (cm²)", "As (cm²)", "Refuerzo"],
+        ["Dirección", "Mu (tonf·m)", "As (cm²)", "Refuerzo", "ℓd/disp (m)"],
         _fila_flex(fL, "Dir. B (volado en L)"),
         _fila_flex(fB, "Dir. L (volado en B)"),
-    ], [4.2 * cm, 2.8 * cm, 2.8 * cm, 2.4 * cm, 4.0 * cm]))
+    ], [3.8 * cm, 2.6 * cm, 2.2 * cm, 4.2 * cm, 3.0 * cm]))
+    # Banda central (zapata rectangular)
+    banda = fL.get("banda_central") or fB.get("banda_central")
+    if banda:
+        el.append(Spacer(1, 3))
+        el.append(Paragraph(
+            "Distribución en banda central del refuerzo de la dirección corta "
+            f"(NSR-10 C.15.4.4.2): β = {banda['beta']}, γ<sub>s</sub> = "
+            f"{banda['gamma_s']} → {banda['n_banda']} barras en la banda central "
+            f"(ancho {banda['ancho_banda_m']:.2f} m) + {banda['n_fuera']} fuera.", p))
+    # Control de fisuración y cuantía máxima (ductilidad)
+    fis = fL.get("fisuracion"); cua = fL.get("cuantia")
+    if fis and cua:
+        el.append(Spacer(1, 2))
+        el.append(Paragraph(
+            f"Control de fisuración (C.10.6.4): separación {fL['sep_cm']:.0f} cm ≤ "
+            f"{fis['sep_max_m']*100:.0f} cm {_ok(fis['cumple'])}. "
+            f"Cuantía (C.10.3.5): ρ = {cua['rho']:.4f} ≤ ρ<sub>máx</sub> = "
+            f"{cua['rho_max']:.4f} {_ok(cua['cumple'])}.", p))
+
+    # 3.4 Transferencia de carga (aplastamiento + dowels)
+    tr = est.get("transferencia")
+    if tr:
+        el.append(Spacer(1, 6))
+        el.append(Paragraph("3.4 Transferencia de carga columna→zapata (C.15.8)", p))
+        el.append(_tabla([
+            ["Concepto", "Valor", "Concepto", "Valor"],
+            ["Pu (tonf)", f"{_tf(tr['Pu_kN']):.1f}", "√(A₂/A₁)", f"{tr['sqrt_A2A1']}"],
+            ["φPn zapata (tonf)", f"{_tf(tr['phiPn_zapata_kN']):.1f}",
+             "φPn columna (tonf)", f"{_tf(tr['phiPn_columna_kN']):.1f}"],
+            ["Aplastamiento D/C", f"{tr['ratio']}", "Estado",
+             "cumple" if tr["cumple_aplastamiento"] else "no cumple"],
+            ["Dowels", f"{tr['n_dowels']} Ø{tr['db_dowel_mm']:.1f}",
+             "As dowels (cm²)", f"{tr['As_dowels_req_cm2']:.1f}"
+             + (" mín" if tr["gobierna_minimo"] else "")],
+            ["ℓdc dowel (m)", f"{tr['ldc_dowel_m']:.2f}", "ℓdc disponible (m)",
+             f"{tr['ldc_disponible_m']:.2f}"],
+        ], [4.2 * cm, 3.4 * cm, 4.2 * cm, 3.4 * cm]))
 
     el.append(Spacer(1, 5))
     el.append(Paragraph(
         f"<b>Verificación al cortante: {_ok(est['cumple_cortante'])}</b> "
-        f"(punzonamiento y una vía).", p))
+        f"(punzonamiento —con momento— y una vía) · "
+        f"<b>Transferencia: {_ok(est.get('cumple_transferencia', True))}</b>.", p))
 
     for a in resultado.get("avisos", []):
         el.append(Paragraph(f"⚠ {a}", small))
@@ -561,6 +611,20 @@ def _memoria_zapata_especial(datos, resultado, entradas, tipo) -> bytes:
             ["Columna 2", f"{_tf(p2['Vu_kN']):.1f}", f"{_tf(p2['phiVc_kN']):.1f}", f"{p2['ratio']}",
              "cumple" if p2["cumple"] else "no cumple"],
         ], [4.0 * cm, 2.8 * cm, 2.8 * cm, 2.0 * cm, 2.6 * cm]))
+        if p1.get("vu_momento_kPa", 0) > 0.1 or p2.get("vu_momento_kPa", 0) > 0.1:
+            el.append(Paragraph(
+                "Con transferencia de momento (γv, C.11.11.7): col.1 D/C = "
+                f"{p1.get('ratio_momento')} → {_ok(p1.get('cumple_momento', True))} · "
+                f"col.2 D/C = {p2.get('ratio_momento')} → {_ok(p2.get('cumple_momento', True))}.", p))
+        tr1, tr2 = est.get("transferencia_col1"), est.get("transferencia_col2")
+        if tr1 and tr2:
+            el.append(Spacer(1, 3))
+            el.append(Paragraph(
+                "Transferencia de carga columna→zapata (C.15.8): col.1 aplastamiento "
+                f"D/C = {tr1['ratio']} {_ok(tr1['cumple_aplastamiento'])}, dowels "
+                f"{tr1['n_dowels']} Ø{tr1['db_dowel_mm']:.1f} {_ok(tr1['cumple_dowels'])} · "
+                f"col.2 aplastamiento D/C = {tr2['ratio']} {_ok(tr2['cumple_aplastamiento'])}, "
+                f"dowels {tr2['n_dowels']} Ø{tr2['db_dowel_mm']:.1f} {_ok(tr2['cumple_dowels'])}.", p))
 
         el.append(Spacer(1, 4))
         el.append(Paragraph("3.2 Flexión y refuerzo", p))
@@ -611,6 +675,13 @@ def _memoria_zapata_especial(datos, resultado, entradas, tipo) -> bytes:
             ["Ambas direcciones", f"{_tm(fx['Mu_kNm']):.2f}", f"{fx['As_cm2']:.1f}{gob}",
              f"{fx['n_barras']} Ø{fx['db_mm']:.1f} @ {fx['sep_cm']:.0f} cm"],
         ], [4.2 * cm, 2.8 * cm, 2.8 * cm, 4.0 * cm]))
+        tr = est.get("transferencia")
+        if tr:
+            el.append(Spacer(1, 3))
+            el.append(Paragraph(
+                "Transferencia de carga columna→zapata (C.15.8): aplastamiento "
+                f"D/C = {tr['ratio']} {_ok(tr['cumple_aplastamiento'])}, dowels "
+                f"{tr['n_dowels']} Ø{tr['db_dowel_mm']:.1f} {_ok(tr['cumple_dowels'])}.", p))
 
     el.append(Spacer(1, 5))
     el.append(Paragraph(f"<b>Verificación al cortante: {_cortante_ok()}</b>", p))
